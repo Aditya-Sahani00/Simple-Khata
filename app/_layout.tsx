@@ -22,7 +22,6 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="accounts/index" options={{ headerShown: false }} />
       <Stack.Screen name="party/[id]" options={{ headerShown: false }} />
       <Stack.Screen
         name="modal/transaction"
@@ -37,7 +36,7 @@ function RootLayoutNav() {
         name="modal/account"
         options={{
           presentation: "formSheet",
-          sheetAllowedDetents: [0.75],
+          sheetAllowedDetents: [0.85],
           sheetGrabberVisible: true,
           headerShown: false,
         }}
@@ -55,7 +54,7 @@ function RootLayoutNav() {
         name="modal/party-entry"
         options={{
           presentation: "formSheet",
-          sheetAllowedDetents: [0.75],
+          sheetAllowedDetents: [0.9],
           sheetGrabberVisible: true,
           headerShown: false,
         }}
@@ -64,7 +63,7 @@ function RootLayoutNav() {
         name="modal/profile"
         options={{
           presentation: "formSheet",
-          sheetAllowedDetents: [0.6],
+          sheetAllowedDetents: [0.65],
           sheetGrabberVisible: true,
           headerShown: false,
         }}

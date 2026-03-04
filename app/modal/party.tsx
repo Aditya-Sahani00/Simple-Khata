@@ -12,9 +12,12 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp, PartyType } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function PartyModal() {
   const { colors, primary } = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { parties, addParty, editParty } = useApp();
 
@@ -54,61 +57,92 @@ export default function PartyModal() {
         </TouchableOpacity>
       </View>
 
-      {/* Type */}
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: colors.textSecondary }]}>Type</Text>
-        <View style={[styles.toggleRow, { backgroundColor: colors.inputBg }]}>
-          {([
-            { label: "Person", value: "person", icon: "person" },
-            { label: "Business", value: "business", icon: "business" },
-          ] as const).map(t => (
-            <TouchableOpacity
-              key={t.value}
-              style={[styles.toggleBtn, type === t.value && { backgroundColor: primary }]}
-              onPress={() => setType(t.value)}
-            >
-              <Ionicons name={t.icon} size={16} color={type === t.value ? "#fff" : colors.textMuted} />
-              <Text style={[styles.toggleText, { color: type === t.value ? "#fff" : colors.textSecondary }]}>
-                {t.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      <KeyboardAwareScrollViewCompat
+        style={{ flex: 1 }}
+        bottomOffset={20}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Type */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Type</Text>
+          <View style={[styles.toggleRow, { backgroundColor: colors.inputBg }]}>
+            {([
+              { label: "Person", value: "person", icon: "person" },
+              { label: "Business", value: "business", icon: "business" },
+            ] as const).map(t => (
+              <TouchableOpacity
+                key={t.value}
+                style={[styles.toggleBtn, type === t.value && { backgroundColor: primary }]}
+                onPress={() => setType(t.value)}
+              >
+                <Ionicons
+                  name={t.icon}
+                  size={16}
+                  color={type === t.value ? "#fff" : colors.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.toggleText,
+                    { color: type === t.value ? "#fff" : colors.textSecondary },
+                  ]}
+                >
+                  {t.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
 
-      {/* Name */}
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: colors.textSecondary }]}>Name *</Text>
-        <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
-          <Ionicons name="person-outline" size={18} color={colors.textMuted} />
-          <TextInput
-            style={[styles.input, { color: colors.text }]}
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g., Ram Bahadur"
-            placeholderTextColor={colors.textMuted}
-            autoFocus={!isEditing}
-          />
+        {/* Name */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Name *</Text>
+          <View
+            style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
+          >
+            <Ionicons name="person-outline" size={18} color={colors.textMuted} />
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              value={name}
+              onChangeText={setName}
+              placeholder="e.g., Ram Bahadur"
+              placeholderTextColor={colors.textMuted}
+              returnKeyType="next"
+              autoFocus={!isEditing}
+            />
+          </View>
         </View>
-      </View>
 
-      {/* Phone */}
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: colors.textSecondary }]}>Phone (optional)</Text>
-        <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
-          <Ionicons name="call-outline" size={18} color={colors.textMuted} />
-          <TextInput
-            style={[styles.input, { color: colors.text }]}
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="98XXXXXXXX"
-            placeholderTextColor={colors.textMuted}
-            keyboardType="phone-pad"
-          />
+        {/* Phone */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Phone (optional)</Text>
+          <View
+            style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
+          >
+            <Ionicons name="call-outline" size={18} color={colors.textMuted} />
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="98XXXXXXXX"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="phone-pad"
+              returnKeyType="done"
+            />
+          </View>
         </View>
-      </View>
 
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+        <View style={{ height: 24 }} />
+      </KeyboardAwareScrollViewCompat>
+
+      <View
+        style={[
+          styles.footer,
+          {
+            borderTopColor: colors.border,
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}
+      >
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: primary }]}
           onPress={handleSave}
@@ -140,11 +174,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   section: { paddingHorizontal: 20, marginBottom: 16 },
   label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 },
-  toggleRow: {
-    flexDirection: "row",
-    borderRadius: 10,
-    padding: 4,
-  },
+  toggleRow: { flexDirection: "row", borderRadius: 10, padding: 4 },
   toggleBtn: {
     flex: 1,
     flexDirection: "row",
@@ -165,11 +195,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  footer: { padding: 20, borderTopWidth: 1, marginTop: "auto" },
-  saveBtn: {
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
-  },
+  footer: { padding: 20, paddingTop: 12, borderTopWidth: 1 },
+  saveBtn: { paddingVertical: 16, borderRadius: 14, alignItems: "center" },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });

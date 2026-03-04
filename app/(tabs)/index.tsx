@@ -5,20 +5,21 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Pressable,
   Platform,
   StatusBar,
+  Switch,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp, Period } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
 import { formatAmount } from "@/components/CurrencyText";
 import BarChart from "@/components/BarChart";
 import { formatDateShort } from "@/utils/nepali-date";
+import { LinearGradient } from "expo-linear-gradient";
+import { getCategoryById } from "@/utils/categories";
 
 const PERIODS: { label: string; value: Period }[] = [
   { label: "Weekly", value: "weekly" },
@@ -26,65 +27,97 @@ const PERIODS: { label: string; value: Period }[] = [
   { label: "Yearly", value: "yearly" },
 ];
 
+// --- Summary cards row ---
 function SummaryCard({
   title,
   amount,
-  icon,
+  subtitle,
   color,
+  bg,
   onPress,
   currency,
+  privacy,
 }: {
   title: string;
   amount: number;
-  icon: string;
+  subtitle?: string;
   color: string;
-  onPress?: () => void;
+  bg: string;
+  onPress: () => void;
   currency: string;
+  privacy: boolean;
 }) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   return (
     <TouchableOpacity
-      style={[styles.summaryCard, { backgroundColor: colors.card }]}
+      style={[styles.summaryCard, { backgroundColor: bg }]}
       onPress={onPress}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
     >
-      <View style={[styles.summaryIconBg, { backgroundColor: color + "20" }]}>
-        <Ionicons name={icon as any} size={18} color={color} />
+      <View style={styles.summaryCardRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.summaryAmount, { color }]} numberOfLines={1}>
+            {privacy ? "Rs. XXXX" : `${currency} ${formatAmount(Math.abs(amount), true)}`}
+          </Text>
+          <Text style={[styles.summaryTitle, { color: color + "BB" }]} numberOfLines={1}>
+            {title}
+            {subtitle ? ` (${subtitle})` : ""}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={color + "88"} />
       </View>
-      <Text style={[styles.summaryTitle, { color: colors.textSecondary }]} numberOfLines={1}>
-        {title}
-      </Text>
-      <Text style={[styles.summaryAmount, { color: colors.text }]} numberOfLines={1}>
-        {currency} {formatAmount(Math.abs(amount), true)}
+    </TouchableOpacity>
+  );
+}
+
+// --- Shortcut button ---
+function ShortcutBtn({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <TouchableOpacity style={styles.shortcutBtn} onPress={onPress} activeOpacity={0.75}>
+      <View style={[styles.shortcutIcon, { backgroundColor: color + "25" }]}>
+        <Ionicons name={icon as any} size={22} color={color} />
+      </View>
+      <Text style={[styles.shortcutLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+        {label}
       </Text>
     </TouchableOpacity>
   );
 }
 
-function TransactionRow({ t, accounts, useBS, currency }: any) {
+// --- Recent transaction row ---
+function TxRow({ t, accounts, useBS, currency, privacy }: any) {
   const { colors } = useTheme();
-  const account = accounts.find((a: any) => a.id === t.accountId);
+  const cat = getCategoryById(t.categoryId);
+  const acct = accounts.find((a: any) => a.id === t.accountId);
   const isIncome = t.type === "income";
-
   return (
     <View style={[styles.txRow, { borderBottomColor: colors.divider }]}>
-      <View style={[styles.txIcon, { backgroundColor: (isIncome ? "#00C853" : "#F44336") + "20" }]}>
-        <Ionicons
-          name={isIncome ? "arrow-down" : "arrow-up"}
-          size={16}
-          color={isIncome ? "#00C853" : "#F44336"}
-        />
+      <View style={[styles.txIcon, { backgroundColor: cat.color + "22" }]}>
+        <Ionicons name={cat.icon as any} size={17} color={cat.color} />
       </View>
       <View style={styles.txInfo}>
         <Text style={[styles.txDesc, { color: colors.text }]} numberOfLines={1}>
-          {t.description || t.categoryId}
+          {t.description || cat.name}
         </Text>
         <Text style={[styles.txMeta, { color: colors.textMuted }]}>
-          {account?.name || "Unknown"} · {formatDateShort(t.date, useBS)}
+          {acct?.name || ""} · {formatDateShort(t.date, useBS)}
         </Text>
       </View>
       <Text style={[styles.txAmount, { color: isIncome ? "#00C853" : "#F44336" }]}>
-        {isIncome ? "+" : "-"}{currency} {formatAmount(t.amount, true)}
+        {privacy
+          ? "Rs. **"
+          : `${isIncome ? "+" : "-"}${currency} ${formatAmount(t.amount, true)}`}
       </Text>
     </View>
   );
@@ -109,9 +142,16 @@ export default function HomeScreen() {
   const currency = settings.currency || "NPR";
   const useBS = settings.dateFormat === "BS";
   const [chartPeriod, setChartPeriod] = useState<Period>(settings.period);
+  const [privacy, setPrivacy] = useState(false);
 
   const income = totalIncome(settings.period);
   const expense = totalExpense(settings.period);
+
+  const periodLabel = useBS
+    ? ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Ashwin","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"][
+        (new Date().getMonth() + 9) % 12
+      ]
+    : new Date().toLocaleString("default", { month: "long" });
 
   // Build chart data
   const chartData = useMemo(() => {
@@ -136,7 +176,7 @@ export default function HomeScreen() {
       return data;
     }
     if (chartPeriod === "monthly") {
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
       const data = months.map(label => ({ label, income: 0, expense: 0 }));
       const year = now.getFullYear();
       transactions.forEach(t => {
@@ -149,8 +189,7 @@ export default function HomeScreen() {
       });
       return data.slice(0, now.getMonth() + 1);
     }
-    // yearly - last 5 years
-    const years: { label: string; income: number; expense: number }[] = [];
+    const years = [];
     for (let y = now.getFullYear() - 4; y <= now.getFullYear(); y++) {
       const entry = { label: String(y).slice(2), income: 0, expense: 0 };
       transactions.forEach(t => {
@@ -165,47 +204,74 @@ export default function HomeScreen() {
   }, [transactions, chartPeriod]);
 
   const recentTxs = useMemo(
-    () => [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5),
+    () =>
+      [...transactions]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5),
     [transactions]
   );
 
-  const handleAddTransaction = (type: "income" | "expense") => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push({ pathname: "/modal/transaction", params: { type } });
-  };
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const TEAL = "#00C853";
+  const bg = isDark ? "#111111" : colors.background;
+  const cardDark = isDark ? "#1E1E1E" : colors.card;
+  const cardAlt = isDark ? "#181818" : colors.surfaceSecondary;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" />
-      {/* Header */}
-      <LinearGradient
-        colors={["#1565C0", "#0D47A1"]}
-        style={[styles.header, { paddingTop: insets.top + 12 }]}
-      >
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.greeting}>Simple Khata</Text>
-            <Text style={styles.profileName}>{activeProfile?.name || "Personal"}</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerBtn}
-              onPress={() => router.push("/accounts/index")}
-            >
-              <Ionicons name="wallet-outline" size={22} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </View>
+    <View style={[styles.container, { backgroundColor: bg }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-        {/* Balance */}
-        <View style={styles.balanceBox}>
-          <Text style={styles.balanceLabel}>Total Balance</Text>
-          <TouchableOpacity onPress={() => router.push("/accounts/index")}>
-            <Text style={styles.balanceAmount}>
-              {currency} {formatAmount(totalBalance)}
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: topPad + 6, backgroundColor: bg }]}>
+        {/* Left: Profile avatar */}
+        <TouchableOpacity
+          style={styles.profileArea}
+          onPress={() => router.push("/(tabs)/profile")}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.avatar, { backgroundColor: primary }]}>
+            <Text style={styles.avatarText}>
+              {activeProfile?.name?.charAt(0)?.toUpperCase() || "A"}
             </Text>
+          </View>
+          <View style={styles.profileTextBox}>
+            <Text style={[styles.profileName, { color: colors.text }]}>
+              {activeProfile?.name || "Personal"}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Right: icons */}
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={[styles.headerIconBtn, { backgroundColor: cardDark }]}
+            onPress={() => router.push("/modal/party-entry")}
+          >
+            <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text style={styles.balanceSub}>Tap to view all accounts</Text>
+        </View>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+      >
+        {/* Privacy Mode */}
+        <View style={[styles.privacyRow, { backgroundColor: cardDark }]}>
+          <Ionicons name="eye-off-outline" size={18} color={colors.textSecondary} />
+          <Text style={[styles.privacyLabel, { color: colors.textSecondary }]}>Privacy Mode</Text>
+          <Switch
+            value={privacy}
+            onValueChange={v => {
+              setPrivacy(v);
+              Haptics.selectionAsync();
+            }}
+            trackColor={{ false: colors.border, true: TEAL }}
+            thumbColor="#fff"
+            style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }] }}
+          />
         </View>
 
         {/* Period selector */}
@@ -213,115 +279,192 @@ export default function HomeScreen() {
           {PERIODS.map(p => (
             <TouchableOpacity
               key={p.value}
-              style={[styles.periodBtn, settings.period === p.value && styles.periodBtnActive]}
+              style={[
+                styles.periodBtn,
+                { backgroundColor: cardDark },
+                settings.period === p.value && { backgroundColor: TEAL + "22", borderColor: TEAL, borderWidth: 1 },
+              ]}
               onPress={() => {
                 updateSettings({ period: p.value });
                 setChartPeriod(p.value);
+                Haptics.selectionAsync();
               }}
             >
-              <Text style={[styles.periodText, settings.period === p.value && styles.periodTextActive]}>
+              <Text
+                style={[
+                  styles.periodText,
+                  { color: settings.period === p.value ? TEAL : colors.textMuted },
+                ]}
+              >
                 {p.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-      </LinearGradient>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Summary Cards */}
-        <View style={styles.cardsGrid}>
+        {/* Summary Cards 2x2 */}
+        <View style={styles.cardGrid}>
+          {/* Income */}
           <SummaryCard
             title="Income"
+            subtitle={periodLabel}
             amount={income}
-            icon="arrow-down-circle"
-            color="#00C853"
+            color={TEAL}
+            bg={isDark ? "#0D2B1D" : "#E8F5E9"}
+            onPress={() => router.push({ pathname: "/modal/transaction", params: { type: "income" } })}
             currency={currency}
+            privacy={privacy}
           />
+          {/* Expense */}
           <SummaryCard
             title="Expense"
+            subtitle={periodLabel}
             amount={expense}
-            icon="arrow-up-circle"
             color="#F44336"
+            bg={isDark ? "#2B0D12" : "#FFEBEE"}
+            onPress={() => router.push({ pathname: "/modal/transaction", params: { type: "expense" } })}
             currency={currency}
+            privacy={privacy}
           />
+          {/* To Receive */}
           <SummaryCard
             title="To Receive"
             amount={totalToReceive}
-            icon="time"
-            color="#1565C0"
+            color={colors.text as string}
+            bg={cardDark}
+            onPress={() => {
+              router.push("/(tabs)/parties");
+              setTimeout(() => router.push({ pathname: "/modal/party-entry", params: { entryType: "to_receive" } }), 300);
+            }}
             currency={currency}
-            onPress={() => router.push("/(tabs)/parties")}
+            privacy={privacy}
           />
+          {/* To Give */}
           <SummaryCard
             title="To Give"
             amount={totalToGive}
-            icon="alert-circle"
-            color="#FF6F00"
+            color={colors.text as string}
+            bg={cardDark}
+            onPress={() => {
+              router.push("/(tabs)/parties");
+              setTimeout(() => router.push({ pathname: "/modal/party-entry", params: { entryType: "to_give" } }), 300);
+            }}
             currency={currency}
-            onPress={() => router.push("/(tabs)/parties")}
+            privacy={privacy}
           />
+          {/* Total Balance */}
+          <TouchableOpacity
+            style={[styles.summaryCard, { backgroundColor: cardDark }]}
+            onPress={() => router.push("/(tabs)/accounts")}
+            activeOpacity={0.85}
+          >
+            <View style={styles.summaryCardRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.balanceBig, { color: colors.text }]} numberOfLines={1}>
+                  {privacy ? "Rs. XXXX" : `${currency} ${formatAmount(totalBalance, true)}`}
+                </Text>
+                <Text style={[styles.summaryTitle, { color: colors.textMuted }]}>
+                  Total Balance
+                </Text>
+                <Text style={[styles.summarySubLine, { color: colors.textMuted }]}>
+                  Cash & Bank
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </View>
+          </TouchableOpacity>
+          {/* Reports */}
+          <TouchableOpacity
+            style={[styles.summaryCard, { backgroundColor: cardDark }]}
+            onPress={() => router.push("/(tabs)/transactions")}
+            activeOpacity={0.85}
+          >
+            <View style={styles.summaryCardRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.balanceBig, { color: colors.text }]}>Reports</Text>
+                <Text style={[styles.summarySubLine, { color: colors.textMuted }]}>
+                  Transactions, Parties...
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* Quick Actions */}
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
-          <View style={styles.quickActions}>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: "#00C853" + "15", borderColor: "#00C853" + "40" }]}
-              onPress={() => handleAddTransaction("income")}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: "#00C853" }]}>
-                <Ionicons name="add" size={20} color="#fff" />
-              </View>
-              <Text style={[styles.actionText, { color: "#00C853" }]}>Cash In</Text>
+        {/* Shortcuts */}
+        <View style={[styles.sectionCard, { backgroundColor: cardDark }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Shortcuts</Text>
+            <TouchableOpacity>
+              <Text style={[styles.editMenu, { color: TEAL }]}>Edit Menu</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: "#F44336" + "15", borderColor: "#F44336" + "40" }]}
-              onPress={() => handleAddTransaction("expense")}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: "#F44336" }]}>
-                <Ionicons name="remove" size={20} color="#fff" />
-              </View>
-              <Text style={[styles.actionText, { color: "#F44336" }]}>Cash Out</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: "#FF6F00" + "15", borderColor: "#FF6F00" + "40" }]}
-              onPress={() => router.push({ pathname: "/modal/party-entry", params: { entryType: "to_give" } })}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: "#FF6F00" }]}>
-                <Ionicons name="arrow-forward" size={20} color="#fff" />
-              </View>
-              <Text style={[styles.actionText, { color: "#FF6F00" }]}>To Give</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: "#1565C0" + "15", borderColor: "#1565C0" + "40" }]}
-              onPress={() => router.push({ pathname: "/modal/party-entry", params: { entryType: "to_receive" } })}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: "#1565C0" }]}>
-                <Ionicons name="arrow-back" size={20} color="#fff" />
-              </View>
-              <Text style={[styles.actionText, { color: "#1565C0" }]}>To Receive</Text>
-            </TouchableOpacity>
+          </View>
+          <View style={styles.shortcutsGrid}>
+            <ShortcutBtn
+              icon="person-add"
+              label="Add Party"
+              color={TEAL}
+              onPress={() => router.push("/modal/party")}
+            />
+            <ShortcutBtn
+              icon="arrow-down-circle"
+              label="Payment In"
+              color={TEAL}
+              onPress={() => router.push({ pathname: "/modal/transaction", params: { type: "income" } })}
+            />
+            <ShortcutBtn
+              icon="arrow-up-circle"
+              label="Payment Out"
+              color={TEAL}
+              onPress={() => router.push({ pathname: "/modal/transaction", params: { type: "expense" } })}
+            />
+            <ShortcutBtn
+              icon="remove-circle"
+              label="Expense"
+              color={TEAL}
+              onPress={() => router.push({ pathname: "/modal/transaction", params: { type: "expense" } })}
+            />
+            <ShortcutBtn
+              icon="add-circle"
+              label="Income"
+              color={TEAL}
+              onPress={() => router.push({ pathname: "/modal/transaction", params: { type: "income" } })}
+            />
           </View>
         </View>
 
-        {/* Chart */}
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
+        {/* Cashflow Chart */}
+        <View style={[styles.sectionCard, { backgroundColor: cardDark }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Cash Flow</Text>
-            <View style={styles.chartPeriodRow}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Cashflow{" "}
+                <Text style={[styles.cashflowSub, { color: colors.textMuted }]}>
+                  {chartPeriod === "weekly"
+                    ? "(Last 7 Days)"
+                    : chartPeriod === "monthly"
+                    ? "(This Year)"
+                    : "(Last 5 Years)"}
+                </Text>
+              </Text>
+            </View>
+            <View style={[styles.chartPeriodRow]}>
               {PERIODS.map(p => (
                 <TouchableOpacity
                   key={p.value}
-                  style={[styles.chartPeriodBtn, chartPeriod === p.value && { backgroundColor: primary + "20" }]}
+                  style={[
+                    styles.chartPeriodBtn,
+                    chartPeriod === p.value && { backgroundColor: TEAL + "22" },
+                  ]}
                   onPress={() => setChartPeriod(p.value)}
                 >
-                  <Text style={[styles.chartPeriodText, { color: chartPeriod === p.value ? primary : colors.textMuted }]}>
-                    {p.label.slice(0, 1)}
+                  <Text
+                    style={[
+                      styles.chartPeriodText,
+                      { color: chartPeriod === p.value ? TEAL : colors.textMuted },
+                    ]}
+                  >
+                    {p.label.charAt(0)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -331,21 +474,30 @@ export default function HomeScreen() {
         </View>
 
         {/* Recent Transactions */}
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
+        <View style={[styles.sectionCard, { backgroundColor: cardDark }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent</Text>
             <TouchableOpacity onPress={() => router.push("/(tabs)/transactions")}>
-              <Text style={[styles.seeAll, { color: primary }]}>See All</Text>
+              <Text style={[styles.seeAll, { color: TEAL }]}>See All</Text>
             </TouchableOpacity>
           </View>
           {recentTxs.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="receipt-outline" size={40} color={colors.textMuted} />
-              <Text style={[styles.emptyText, { color: colors.textMuted }]}>No transactions yet</Text>
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                No transactions yet
+              </Text>
             </View>
           ) : (
             recentTxs.map(t => (
-              <TransactionRow key={t.id} t={t} accounts={accounts} useBS={useBS} currency={currency} />
+              <TxRow
+                key={t.id}
+                t={t}
+                accounts={accounts}
+                useBS={useBS}
+                currency={currency}
+                privacy={privacy}
+              />
             ))
           )}
         </View>
@@ -359,162 +511,163 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  headerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 10,
   },
-  greeting: {
-    fontSize: 20,
+  profileArea: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    fontSize: 18,
     fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
+    color: "#fff",
+  },
+  profileTextBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   profileName: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.75)",
-    marginTop: 2,
+    fontSize: 18,
+    fontFamily: "Inter_600SemiBold",
   },
-  headerActions: {
+  headerRight: {
     flexDirection: "row",
-    gap: 8,
+    alignItems: "center",
+    gap: 10,
   },
-  headerBtn: {
+  headerIconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
-  balanceBox: {
+  privacyRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 10,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 14,
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  balanceLabel: {
-    fontSize: 13,
+  privacyLabel: {
+    flex: 1,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.75)",
-    marginBottom: 4,
-  },
-  balanceAmount: {
-    fontSize: 36,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-  },
-  balanceSub: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.5)",
-    marginTop: 4,
   },
   periodRow: {
     flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 20,
-    padding: 3,
+    gap: 8,
+    paddingHorizontal: 16,
+    marginBottom: 10,
   },
   periodBtn: {
     flex: 1,
-    paddingVertical: 6,
-    borderRadius: 17,
+    paddingVertical: 8,
+    borderRadius: 10,
     alignItems: "center",
   },
-  periodBtnActive: {
-    backgroundColor: "#FFFFFF",
-  },
   periodText: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.8)",
   },
-  periodTextActive: {
-    color: "#1565C0",
-  },
-  cardsGrid: {
+  cardGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
-    padding: 16,
-    paddingBottom: 0,
+    paddingHorizontal: 16,
+    marginBottom: 10,
   },
   summaryCard: {
-    width: "47%",
+    width: "48%",
     borderRadius: 14,
-    padding: 14,
-    gap: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  summaryIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
+    padding: 16,
+    minHeight: 80,
     justifyContent: "center",
+  },
+  summaryCardRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  summaryAmount: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 4,
   },
   summaryTitle: {
     fontSize: 12,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Inter_400Regular",
   },
-  summaryAmount: {
-    fontSize: 15,
+  summarySubLine: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  balanceBig: {
+    fontSize: 16,
     fontFamily: "Inter_700Bold",
+    marginBottom: 4,
   },
-  section: {
+  sectionCard: {
     margin: 16,
     marginBottom: 0,
     borderRadius: 16,
     padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: "Inter_600SemiBold",
-    marginBottom: 12,
   },
-  seeAll: {
+  cashflowSub: {
     fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  editMenu: {
+    fontSize: 14,
     fontFamily: "Inter_500Medium",
   },
-  quickActions: {
+  shortcutsGrid: {
     flexDirection: "row",
-    gap: 8,
+    flexWrap: "wrap",
+    gap: 16,
+    justifyContent: "flex-start",
   },
-  actionBtn: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 10,
+  shortcutBtn: {
+    width: "18%",
     alignItems: "center",
     gap: 6,
+    minWidth: 56,
   },
-  actionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  shortcutIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
   },
-  actionText: {
-    fontSize: 11,
+  shortcutLabel: {
+    fontSize: 10,
     fontFamily: "Inter_500Medium",
     textAlign: "center",
   },
@@ -533,11 +686,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
+  seeAll: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
   txRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderBottomWidth: 1,
   },
   txIcon: {

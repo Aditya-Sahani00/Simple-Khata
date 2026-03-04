@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   Alert,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -14,9 +13,12 @@ import * as Haptics from "expo-haptics";
 import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
 import { todayString } from "@/utils/nepali-date";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function PartyEntryModal() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { partyId, entryType: paramEntryType, id } = useLocalSearchParams<{
     partyId?: string;
     entryType?: string;
@@ -29,9 +31,14 @@ export default function PartyEntryModal() {
   const [entryType, setEntryType] = useState<"to_give" | "to_receive">(
     existing?.entryType || (paramEntryType as "to_give" | "to_receive") || "to_receive"
   );
-  const [selectedPartyId, setSelectedPartyId] = useState(existing?.partyId || partyId || "");
+  const [selectedPartyId, setSelectedPartyId] = useState(
+    existing?.partyId || partyId || ""
+  );
   const [accountId, setAccountId] = useState(
-    existing?.accountId || accounts.find(a => a.isDefault)?.id || accounts[0]?.id || ""
+    existing?.accountId ||
+      accounts.find(a => a.isDefault)?.id ||
+      accounts[0]?.id ||
+      ""
   );
   const [amount, setAmount] = useState(existing ? String(existing.amount) : "");
   const [description, setDescription] = useState(existing?.description || "");
@@ -54,7 +61,6 @@ export default function PartyEntryModal() {
       Alert.alert("Select Account", "Please select an account.");
       return;
     }
-
     const data = {
       partyId: selectedPartyId,
       accountId,
@@ -64,7 +70,6 @@ export default function PartyEntryModal() {
       date,
       settled: false,
     };
-
     if (isEditing) {
       editPartyEntry(id!, data);
     } else {
@@ -87,25 +92,53 @@ export default function PartyEntryModal() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+      <KeyboardAwareScrollViewCompat
+        style={{ flex: 1 }}
+        bottomOffset={20}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Entry Type */}
         <View style={styles.section}>
           <View style={[styles.typeToggle, { backgroundColor: colors.inputBg }]}>
             <TouchableOpacity
-              style={[styles.typeBtn, entryType === "to_receive" && { backgroundColor: "#1565C0" }]}
+              style={[
+                styles.typeBtn,
+                entryType === "to_receive" && { backgroundColor: "#1565C0" },
+              ]}
               onPress={() => setEntryType("to_receive")}
             >
-              <Ionicons name="arrow-back" size={16} color={entryType === "to_receive" ? "#fff" : colors.textMuted} />
-              <Text style={[styles.typeBtnText, { color: entryType === "to_receive" ? "#fff" : colors.textMuted }]}>
+              <Ionicons
+                name="arrow-back"
+                size={16}
+                color={entryType === "to_receive" ? "#fff" : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.typeBtnText,
+                  { color: entryType === "to_receive" ? "#fff" : colors.textMuted },
+                ]}
+              >
                 To Receive
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.typeBtn, entryType === "to_give" && { backgroundColor: "#FF6F00" }]}
+              style={[
+                styles.typeBtn,
+                entryType === "to_give" && { backgroundColor: "#FF6F00" },
+              ]}
               onPress={() => setEntryType("to_give")}
             >
-              <Ionicons name="arrow-forward" size={16} color={entryType === "to_give" ? "#fff" : colors.textMuted} />
-              <Text style={[styles.typeBtnText, { color: entryType === "to_give" ? "#fff" : colors.textMuted }]}>
+              <Ionicons
+                name="arrow-forward"
+                size={16}
+                color={entryType === "to_give" ? "#fff" : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.typeBtnText,
+                  { color: entryType === "to_give" ? "#fff" : colors.textMuted },
+                ]}
+              >
                 To Give
               </Text>
             </TouchableOpacity>
@@ -122,39 +155,46 @@ export default function PartyEntryModal() {
             keyboardType="numeric"
             placeholder="0"
             placeholderTextColor={color + "40"}
+            returnKeyType="done"
           />
         </View>
 
-        {/* Party */}
+        {/* Party selection (only if no pre-selected partyId) */}
         {!partyId && (
           <View style={styles.section}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>Party</Text>
             {parties.length === 0 ? (
-              <View style={[styles.emptyChip, { backgroundColor: colors.inputBg }]}>
-                <Text style={[styles.emptyChipText, { color: colors.textMuted }]}>
-                  No parties yet. Add a party first.
+              <View style={[styles.emptyNote, { backgroundColor: colors.inputBg }]}>
+                <Text style={[styles.emptyNoteText, { color: colors.textMuted }]}>
+                  No parties yet. Go to Parties tab and add a party first.
                 </Text>
               </View>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.chipRow}>
-                  {parties.map(p => (
-                    <TouchableOpacity
-                      key={p.id}
+              <View style={styles.chipWrap}>
+                {parties.map(p => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[
+                      styles.chip,
+                      { borderColor: colors.border, backgroundColor: colors.inputBg },
+                      selectedPartyId === p.id && {
+                        backgroundColor: color + "20",
+                        borderColor: color,
+                      },
+                    ]}
+                    onPress={() => setSelectedPartyId(p.id)}
+                  >
+                    <Text
                       style={[
-                        styles.chip,
-                        { borderColor: colors.border, backgroundColor: colors.inputBg },
-                        selectedPartyId === p.id && { backgroundColor: color + "20", borderColor: color },
+                        styles.chipText,
+                        { color: selectedPartyId === p.id ? color : colors.text },
                       ]}
-                      onPress={() => setSelectedPartyId(p.id)}
                     >
-                      <Text style={[styles.chipText, { color: selectedPartyId === p.id ? color : colors.text }]}>
-                        {p.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
+                      {p.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             )}
           </View>
         )}
@@ -162,42 +202,48 @@ export default function PartyEntryModal() {
         {/* Account */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Account</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipRow}>
-              {accounts.map(a => (
-                <TouchableOpacity
-                  key={a.id}
+          <View style={styles.chipWrap}>
+            {accounts.map(a => (
+              <TouchableOpacity
+                key={a.id}
+                style={[
+                  styles.chip,
+                  { borderColor: colors.border, backgroundColor: colors.inputBg },
+                  accountId === a.id && { backgroundColor: color + "20", borderColor: color },
+                ]}
+                onPress={() => setAccountId(a.id)}
+              >
+                <Ionicons
+                  name={a.type === "cash" ? "cash" : a.type === "bank" ? "card" : "wallet"}
+                  size={14}
+                  color={accountId === a.id ? color : colors.textMuted}
+                />
+                <Text
                   style={[
-                    styles.chip,
-                    { borderColor: colors.border, backgroundColor: colors.inputBg },
-                    accountId === a.id && { backgroundColor: color + "20", borderColor: color },
+                    styles.chipText,
+                    { color: accountId === a.id ? color : colors.text },
                   ]}
-                  onPress={() => setAccountId(a.id)}
                 >
-                  <Ionicons
-                    name={a.type === "cash" ? "cash" : a.type === "bank" ? "card" : "wallet"}
-                    size={14}
-                    color={accountId === a.id ? color : colors.textMuted}
-                  />
-                  <Text style={[styles.chipText, { color: accountId === a.id ? color : colors.text }]}>
-                    {a.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+                  {a.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Description */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Description (optional)</Text>
-          <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+          <View
+            style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
+          >
             <TextInput
               style={[styles.input, { color: colors.text }]}
               value={description}
               onChangeText={setDescription}
               placeholder="Add a note..."
               placeholderTextColor={colors.textMuted}
+              returnKeyType="next"
             />
           </View>
         </View>
@@ -205,7 +251,9 @@ export default function PartyEntryModal() {
         {/* Date */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Date</Text>
-          <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+          <View
+            style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
+          >
             <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
             <TextInput
               style={[styles.input, { color: colors.text }]}
@@ -213,14 +261,23 @@ export default function PartyEntryModal() {
               onChangeText={setDate}
               placeholder="YYYY-MM-DD"
               placeholderTextColor={colors.textMuted}
+              returnKeyType="done"
             />
           </View>
         </View>
 
-        <View style={{ height: 20 }} />
-      </ScrollView>
+        <View style={{ height: 24 }} />
+      </KeyboardAwareScrollViewCompat>
 
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+      <View
+        style={[
+          styles.footer,
+          {
+            borderTopColor: colors.border,
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}
+      >
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: color }]}
           onPress={handleSave}
@@ -271,17 +328,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
+    paddingVertical: 14,
     gap: 4,
   },
-  currencySymbol: { fontSize: 24, fontFamily: "Inter_600SemiBold" },
+  currencySymbol: { fontSize: 22, fontFamily: "Inter_600SemiBold" },
   amountInput: {
-    fontSize: 48,
+    fontSize: 44,
     fontFamily: "Inter_700Bold",
     minWidth: 100,
     textAlign: "center",
   },
-  chipRow: { flexDirection: "row", gap: 8 },
+  chipWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   chip: {
     flexDirection: "row",
     alignItems: "center",
@@ -292,12 +353,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  emptyChip: {
+  emptyNote: {
     borderRadius: 10,
     padding: 14,
     alignItems: "center",
   },
-  emptyChipText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  emptyNoteText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
   inputBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -308,11 +369,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  footer: { padding: 20, borderTopWidth: 1 },
-  saveBtn: {
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
-  },
+  footer: { padding: 20, paddingTop: 12, borderTopWidth: 1 },
+  saveBtn: { paddingVertical: 16, borderRadius: 14, alignItems: "center" },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });

@@ -23,9 +23,13 @@ function NativeTabLayout() {
         <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
         <Label>Parties</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="accounts">
+        <Icon sf={{ default: "creditcard", selected: "creditcard.fill" }} />
+        <Label>Accounts</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
-        <Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} />
-        <Label>Profile</Label>
+        <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
+        <Label>More</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -39,24 +43,25 @@ function ClassicTabLayout() {
     (settings.theme === "system" && systemScheme === "dark");
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const TEAL = "#00C853";
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: AppColors.primary,
+        tabBarActiveTintColor: TEAL,
         tabBarInactiveTintColor: isDark ? "#546E7A" : "#90A4AE",
         tabBarStyle: {
           position: "absolute",
           backgroundColor: isIOS
             ? "transparent"
             : isDark
-            ? "#0A1628"
+            ? "#0D0D0D"
             : "#FFFFFF",
-          borderTopWidth: isWeb ? 1 : 0,
-          borderTopColor: isDark ? "#1A3050" : "#E0E7EF",
+          borderTopWidth: isWeb ? 1 : 0.5,
+          borderTopColor: isDark ? "#2A2A2A" : "#E0E7EF",
           elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          height: isWeb ? 84 : 60,
         },
         tabBarBackground: () =>
           isIOS ? (
@@ -69,10 +74,15 @@ function ClassicTabLayout() {
             <View
               style={[
                 StyleSheet.absoluteFill,
-                { backgroundColor: isDark ? "#0A1628" : "#FFFFFF" },
+                { backgroundColor: isDark ? "#0D0D0D" : "#FFFFFF" },
               ]}
             />
           ) : null,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontFamily: "Inter_500Medium",
+          marginBottom: Platform.OS === "ios" ? 0 : 4,
+        },
       }}
     >
       <Tabs.Screen
@@ -89,7 +99,7 @@ function ClassicTabLayout() {
         options={{
           title: "Transactions",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="list" size={size} color={color} />
+            <Ionicons name="swap-vertical" size={size} color={color} />
           ),
         }}
       />
@@ -103,11 +113,20 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="accounts"
+        options={{
+          title: "Accounts",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="wallet" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "More",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-circle" size={size} color={color} />
+            <Ionicons name="grid" size={size} color={color} />
           ),
         }}
       />

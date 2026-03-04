@@ -5,20 +5,22 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   Alert,
   Platform,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useApp, Transaction } from "@/context/AppContext";
+import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
 import { getCategoriesByType, getCategoryById } from "@/utils/categories";
 import { todayString } from "@/utils/nepali-date";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TransactionModal() {
   const { colors, primary } = useTheme();
+  const insets = useSafeAreaInsets();
   const { id, type: paramType } = useLocalSearchParams<{ id?: string; type?: string }>();
   const { transactions, accounts, addTransaction, editTransaction, settings } = useApp();
   const currency = settings.currency || "NPR";
@@ -39,7 +41,6 @@ export default function TransactionModal() {
   const categories = getCategoriesByType(txType);
   const isEditing = !!existing;
 
-  // Reset category if type changes
   useEffect(() => {
     if (!existing) setCategoryId("");
   }, [txType]);
@@ -57,7 +58,6 @@ export default function TransactionModal() {
       Alert.alert("Select Account", "Please select an account.");
       return;
     }
-
     const data = {
       type: txType,
       amount: Number(amount),
@@ -66,7 +66,6 @@ export default function TransactionModal() {
       description: description.trim(),
       date,
     };
-
     if (isEditing) {
       editTransaction(id!, data);
     } else {
@@ -82,10 +81,8 @@ export default function TransactionModal() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
-      {/* Handle */}
       <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
-      {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>
           {isEditing ? "Edit Transaction" : "Add Transaction"}
@@ -117,7 +114,11 @@ export default function TransactionModal() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+      <KeyboardAwareScrollViewCompat
+        style={{ flex: 1 }}
+        bottomOffset={20}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Amount */}
         <View style={styles.amountBox}>
           <Text style={[styles.currencySymbol, { color: activeColor }]}>{currency}</Text>
@@ -128,6 +129,7 @@ export default function TransactionModal() {
             keyboardType="numeric"
             placeholder="0"
             placeholderTextColor={activeColor + "40"}
+            returnKeyType="done"
           />
         </View>
 
@@ -141,6 +143,7 @@ export default function TransactionModal() {
               onChangeText={setDescription}
               placeholder="Add a note..."
               placeholderTextColor={colors.textMuted}
+              returnKeyType="next"
             />
           </View>
         </View>
@@ -156,6 +159,7 @@ export default function TransactionModal() {
               onChangeText={setDate}
               placeholder="YYYY-MM-DD"
               placeholderTextColor={colors.textMuted}
+              returnKeyType="done"
             />
           </View>
         </View>
@@ -163,30 +167,28 @@ export default function TransactionModal() {
         {/* Account */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Account</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipRow}>
-              {accounts.map(a => (
-                <TouchableOpacity
-                  key={a.id}
-                  style={[
-                    styles.chip,
-                    { borderColor: colors.border, backgroundColor: colors.inputBg },
-                    accountId === a.id && { backgroundColor: primary + "20", borderColor: primary },
-                  ]}
-                  onPress={() => setAccountId(a.id)}
-                >
-                  <Ionicons
-                    name={a.type === "cash" ? "cash" : a.type === "bank" ? "card" : "wallet"}
-                    size={14}
-                    color={accountId === a.id ? primary : colors.textMuted}
-                  />
-                  <Text style={[styles.chipText, { color: accountId === a.id ? primary : colors.text }]}>
-                    {a.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+          <View style={styles.chipScrollRow}>
+            {accounts.map(a => (
+              <TouchableOpacity
+                key={a.id}
+                style={[
+                  styles.chip,
+                  { borderColor: colors.border, backgroundColor: colors.inputBg },
+                  accountId === a.id && { backgroundColor: primary + "20", borderColor: primary },
+                ]}
+                onPress={() => setAccountId(a.id)}
+              >
+                <Ionicons
+                  name={a.type === "cash" ? "cash" : a.type === "bank" ? "card" : "wallet"}
+                  size={14}
+                  color={accountId === a.id ? primary : colors.textMuted}
+                />
+                <Text style={[styles.chipText, { color: accountId === a.id ? primary : colors.text }]}>
+                  {a.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Category */}
@@ -203,7 +205,11 @@ export default function TransactionModal() {
                 ]}
                 onPress={() => setCategoryId(cat.id)}
               >
-                <Ionicons name={cat.icon as any} size={16} color={categoryId === cat.id ? cat.color : colors.textMuted} />
+                <Ionicons
+                  name={cat.icon as any}
+                  size={15}
+                  color={categoryId === cat.id ? cat.color : colors.textMuted}
+                />
                 <Text
                   style={[
                     styles.categoryText,
@@ -218,10 +224,18 @@ export default function TransactionModal() {
         </View>
 
         <View style={{ height: 20 }} />
-      </ScrollView>
+      </KeyboardAwareScrollViewCompat>
 
       {/* Save button */}
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+      <View
+        style={[
+          styles.footer,
+          {
+            borderTopColor: colors.border,
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}
+      >
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: activeColor }]}
           onPress={handleSave}
@@ -272,12 +286,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
+    paddingVertical: 14,
     gap: 4,
   },
-  currencySymbol: { fontSize: 24, fontFamily: "Inter_600SemiBold" },
+  currencySymbol: { fontSize: 22, fontFamily: "Inter_600SemiBold" },
   amountInput: {
-    fontSize: 48,
+    fontSize: 44,
     fontFamily: "Inter_700Bold",
     minWidth: 100,
     textAlign: "center",
@@ -294,7 +308,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  chipRow: { flexDirection: "row", gap: 8 },
+  chipScrollRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   chip: {
     flexDirection: "row",
     alignItems: "center",
@@ -318,11 +336,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    minWidth: "30%",
   },
   categoryText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   footer: {
     padding: 20,
+    paddingTop: 12,
     borderTopWidth: 1,
   },
   saveBtn: {

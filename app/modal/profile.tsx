@@ -12,6 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const PROFILE_TYPES = [
   { label: "Personal", value: "personal", icon: "person", color: "#1565C0" },
@@ -22,6 +24,7 @@ const PROFILE_TYPES = [
 
 export default function ProfileModal() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { profiles, addProfile, editProfile } = useApp();
 
@@ -63,46 +66,77 @@ export default function ProfileModal() {
         </TouchableOpacity>
       </View>
 
-      {/* Type selection */}
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: colors.textSecondary }]}>Profile Type</Text>
-        <View style={styles.typeGrid}>
-          {PROFILE_TYPES.map(t => (
-            <TouchableOpacity
-              key={t.value}
-              style={[
-                styles.typeCard,
-                { backgroundColor: colors.inputBg, borderColor: colors.border },
-                type === t.value && { backgroundColor: t.color + "15", borderColor: t.color },
-              ]}
-              onPress={() => setType(t.value)}
-            >
-              <Ionicons name={t.icon as any} size={24} color={type === t.value ? t.color : colors.textMuted} />
-              <Text style={[styles.typeLabel, { color: type === t.value ? t.color : colors.textSecondary }]}>
-                {t.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      <KeyboardAwareScrollViewCompat
+        style={{ flex: 1 }}
+        bottomOffset={20}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Type */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Profile Type</Text>
+          <View style={styles.typeGrid}>
+            {PROFILE_TYPES.map(t => (
+              <TouchableOpacity
+                key={t.value}
+                style={[
+                  styles.typeCard,
+                  { backgroundColor: colors.inputBg, borderColor: colors.border },
+                  type === t.value && {
+                    backgroundColor: t.color + "15",
+                    borderColor: t.color,
+                  },
+                ]}
+                onPress={() => setType(t.value)}
+              >
+                <Ionicons
+                  name={t.icon as any}
+                  size={26}
+                  color={type === t.value ? t.color : colors.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.typeLabel,
+                    { color: type === t.value ? t.color : colors.textSecondary },
+                  ]}
+                >
+                  {t.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
 
-      {/* Name */}
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: colors.textSecondary }]}>Profile Name *</Text>
-        <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
-          <Ionicons name={selectedType.icon as any} size={18} color={selectedType.color} />
-          <TextInput
-            style={[styles.input, { color: colors.text }]}
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g., My Business, Personal"
-            placeholderTextColor={colors.textMuted}
-            autoFocus={!isEditing}
-          />
+        {/* Name */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Profile Name *</Text>
+          <View
+            style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
+          >
+            <Ionicons name={selectedType.icon as any} size={18} color={selectedType.color} />
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              value={name}
+              onChangeText={setName}
+              placeholder="e.g., My Business, Personal"
+              placeholderTextColor={colors.textMuted}
+              returnKeyType="done"
+              autoFocus={!isEditing}
+            />
+          </View>
         </View>
-      </View>
 
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+        <View style={{ height: 24 }} />
+      </KeyboardAwareScrollViewCompat>
+
+      <View
+        style={[
+          styles.footer,
+          {
+            borderTopColor: colors.border,
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}
+      >
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: selectedType.color }]}
           onPress={handleSave}
@@ -134,17 +168,13 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   section: { paddingHorizontal: 20, marginBottom: 20 },
   label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 10 },
-  typeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
+  typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   typeCard: {
     width: "47%",
     alignItems: "center",
     gap: 8,
     borderRadius: 14,
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderWidth: 1,
   },
   typeLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
@@ -158,11 +188,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  footer: { padding: 20, borderTopWidth: 1, marginTop: "auto" },
-  saveBtn: {
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
-  },
+  footer: { padding: 20, paddingTop: 12, borderTopWidth: 1 },
+  saveBtn: { paddingVertical: 16, borderRadius: 14, alignItems: "center" },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });
