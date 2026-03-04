@@ -1,0 +1,334 @@
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Platform,
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useApp, Transaction } from "@/context/AppContext";
+import { useTheme } from "@/hooks/useTheme";
+import { getCategoriesByType, getCategoryById } from "@/utils/categories";
+import { todayString } from "@/utils/nepali-date";
+
+export default function TransactionModal() {
+  const { colors, primary } = useTheme();
+  const { id, type: paramType } = useLocalSearchParams<{ id?: string; type?: string }>();
+  const { transactions, accounts, addTransaction, editTransaction, settings } = useApp();
+  const currency = settings.currency || "NPR";
+
+  const existing = id ? transactions.find(t => t.id === id) : undefined;
+
+  const [txType, setTxType] = useState<"income" | "expense">(
+    existing?.type || (paramType as "income" | "expense") || "expense"
+  );
+  const [amount, setAmount] = useState(existing ? String(existing.amount) : "");
+  const [categoryId, setCategoryId] = useState(existing?.categoryId || "");
+  const [accountId, setAccountId] = useState(
+    existing?.accountId || accounts.find(a => a.isDefault)?.id || accounts[0]?.id || ""
+  );
+  const [description, setDescription] = useState(existing?.description || "");
+  const [date, setDate] = useState(existing?.date || todayString());
+
+  const categories = getCategoriesByType(txType);
+  const isEditing = !!existing;
+
+  // Reset category if type changes
+  useEffect(() => {
+    if (!existing) setCategoryId("");
+  }, [txType]);
+
+  const handleSave = () => {
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      Alert.alert("Invalid Amount", "Please enter a valid amount greater than 0.");
+      return;
+    }
+    if (!categoryId) {
+      Alert.alert("Select Category", "Please select a category.");
+      return;
+    }
+    if (!accountId) {
+      Alert.alert("Select Account", "Please select an account.");
+      return;
+    }
+
+    const data = {
+      type: txType,
+      amount: Number(amount),
+      categoryId,
+      accountId,
+      description: description.trim(),
+      date,
+    };
+
+    if (isEditing) {
+      editTransaction(id!, data);
+    } else {
+      addTransaction(data);
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.back();
+  };
+
+  const incomeColor = "#00C853";
+  const expenseColor = "#F44336";
+  const activeColor = txType === "income" ? incomeColor : expenseColor;
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+      {/* Handle */}
+      <View style={[styles.handle, { backgroundColor: colors.border }]} />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          {isEditing ? "Edit Transaction" : "Add Transaction"}
+        </Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="close" size={24} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Type toggle */}
+      <View style={[styles.typeToggle, { backgroundColor: colors.inputBg }]}>
+        <TouchableOpacity
+          style={[styles.typeBtn, txType === "income" && { backgroundColor: incomeColor }]}
+          onPress={() => setTxType("income")}
+        >
+          <Ionicons name="arrow-down-circle" size={16} color={txType === "income" ? "#fff" : colors.textMuted} />
+          <Text style={[styles.typeBtnText, { color: txType === "income" ? "#fff" : colors.textMuted }]}>
+            Income
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.typeBtn, txType === "expense" && { backgroundColor: expenseColor }]}
+          onPress={() => setTxType("expense")}
+        >
+          <Ionicons name="arrow-up-circle" size={16} color={txType === "expense" ? "#fff" : colors.textMuted} />
+          <Text style={[styles.typeBtnText, { color: txType === "expense" ? "#fff" : colors.textMuted }]}>
+            Expense
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+        {/* Amount */}
+        <View style={styles.amountBox}>
+          <Text style={[styles.currencySymbol, { color: activeColor }]}>{currency}</Text>
+          <TextInput
+            style={[styles.amountInput, { color: activeColor }]}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="numeric"
+            placeholder="0"
+            placeholderTextColor={activeColor + "40"}
+          />
+        </View>
+
+        {/* Description */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Description (optional)</Text>
+          <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Add a note..."
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+        </View>
+
+        {/* Date */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Date</Text>
+          <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+            <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              value={date}
+              onChangeText={setDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+        </View>
+
+        {/* Account */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Account</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.chipRow}>
+              {accounts.map(a => (
+                <TouchableOpacity
+                  key={a.id}
+                  style={[
+                    styles.chip,
+                    { borderColor: colors.border, backgroundColor: colors.inputBg },
+                    accountId === a.id && { backgroundColor: primary + "20", borderColor: primary },
+                  ]}
+                  onPress={() => setAccountId(a.id)}
+                >
+                  <Ionicons
+                    name={a.type === "cash" ? "cash" : a.type === "bank" ? "card" : "wallet"}
+                    size={14}
+                    color={accountId === a.id ? primary : colors.textMuted}
+                  />
+                  <Text style={[styles.chipText, { color: accountId === a.id ? primary : colors.text }]}>
+                    {a.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Category */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Category</Text>
+          <View style={styles.categoryGrid}>
+            {categories.map(cat => (
+              <TouchableOpacity
+                key={cat.id}
+                style={[
+                  styles.categoryChip,
+                  { backgroundColor: colors.inputBg, borderColor: colors.border },
+                  categoryId === cat.id && { backgroundColor: cat.color + "20", borderColor: cat.color },
+                ]}
+                onPress={() => setCategoryId(cat.id)}
+              >
+                <Ionicons name={cat.icon as any} size={16} color={categoryId === cat.id ? cat.color : colors.textMuted} />
+                <Text
+                  style={[
+                    styles.categoryText,
+                    { color: categoryId === cat.id ? cat.color : colors.textSecondary },
+                  ]}
+                >
+                  {cat.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={{ height: 20 }} />
+      </ScrollView>
+
+      {/* Save button */}
+      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: activeColor }]}
+          onPress={handleSave}
+        >
+          <Text style={styles.saveBtnText}>{isEditing ? "Update" : "Add"} Transaction</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  typeToggle: {
+    flexDirection: "row",
+    marginHorizontal: 20,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 8,
+  },
+  typeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 9,
+  },
+  typeBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  amountBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    gap: 4,
+  },
+  currencySymbol: { fontSize: 24, fontFamily: "Inter_600SemiBold" },
+  amountInput: {
+    fontSize: 48,
+    fontFamily: "Inter_700Bold",
+    minWidth: 100,
+    textAlign: "center",
+  },
+  section: { paddingHorizontal: 20, marginBottom: 16 },
+  sectionLabel: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 },
+  inputBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+  },
+  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  chipRow: { flexDirection: "row", gap: 8 },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+  },
+  chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  categoryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    minWidth: "30%",
+  },
+  categoryText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  footer: {
+    padding: 20,
+    borderTopWidth: 1,
+  },
+  saveBtn: {
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
+});
