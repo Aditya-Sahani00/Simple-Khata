@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Platform,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,11 +15,9 @@ import { useTheme } from "@/hooks/useTheme";
 import { getCategoriesByType, getCategoryById } from "@/utils/categories";
 import { todayString } from "@/utils/nepali-date";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TransactionModal() {
-  const { colors, primary } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const { id, type: paramType } = useLocalSearchParams<{ id?: string; type?: string }>();
   const { transactions, accounts, addTransaction, editTransaction, settings } = useApp();
   const currency = settings.currency || "NPR";
@@ -59,18 +56,11 @@ export default function TransactionModal() {
       return;
     }
     const data = {
-      type: txType,
-      amount: Number(amount),
-      categoryId,
-      accountId,
-      description: description.trim(),
-      date,
+      type: txType, amount: Number(amount), categoryId,
+      accountId, description: description.trim(), date,
     };
-    if (isEditing) {
-      editTransaction(id!, data);
-    } else {
-      addTransaction(data);
-    }
+    if (isEditing) editTransaction(id!, data);
+    else addTransaction(data);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };
@@ -92,13 +82,14 @@ export default function TransactionModal() {
         </TouchableOpacity>
       </View>
 
-      {/* Type toggle */}
+      {/* Type toggle — outside scroll, always visible */}
       <View style={[styles.typeToggle, { backgroundColor: colors.inputBg }]}>
         <TouchableOpacity
           style={[styles.typeBtn, txType === "income" && { backgroundColor: incomeColor }]}
           onPress={() => setTxType("income")}
         >
-          <Ionicons name="arrow-down-circle" size={16} color={txType === "income" ? "#fff" : colors.textMuted} />
+          <Ionicons name="arrow-down-circle" size={16}
+            color={txType === "income" ? "#fff" : colors.textMuted} />
           <Text style={[styles.typeBtnText, { color: txType === "income" ? "#fff" : colors.textMuted }]}>
             Income
           </Text>
@@ -107,17 +98,20 @@ export default function TransactionModal() {
           style={[styles.typeBtn, txType === "expense" && { backgroundColor: expenseColor }]}
           onPress={() => setTxType("expense")}
         >
-          <Ionicons name="arrow-up-circle" size={16} color={txType === "expense" ? "#fff" : colors.textMuted} />
+          <Ionicons name="arrow-up-circle" size={16}
+            color={txType === "expense" ? "#fff" : colors.textMuted} />
           <Text style={[styles.typeBtnText, { color: txType === "expense" ? "#fff" : colors.textMuted }]}>
             Expense
           </Text>
         </TouchableOpacity>
       </View>
 
+      {/* ALL form content + Save button inside scroll so keyboard never hides anything */}
       <KeyboardAwareScrollViewCompat
         style={{ flex: 1 }}
-        bottomOffset={20}
+        bottomOffset={32}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Amount */}
         <View style={styles.amountBox}>
@@ -130,18 +124,19 @@ export default function TransactionModal() {
             placeholder="0"
             placeholderTextColor={activeColor + "40"}
             returnKeyType="done"
+            autoFocus={!isEditing}
           />
         </View>
 
         {/* Description */}
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Description (optional)</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Description</Text>
           <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
             <TextInput
               style={[styles.input, { color: colors.text }]}
               value={description}
               onChangeText={setDescription}
-              placeholder="Add a note..."
+              placeholder="Add a note... (optional)"
               placeholderTextColor={colors.textMuted}
               returnKeyType="next"
             />
@@ -167,23 +162,23 @@ export default function TransactionModal() {
         {/* Account */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Account</Text>
-          <View style={styles.chipScrollRow}>
+          <View style={styles.chipRow}>
             {accounts.map(a => (
               <TouchableOpacity
                 key={a.id}
                 style={[
                   styles.chip,
                   { borderColor: colors.border, backgroundColor: colors.inputBg },
-                  accountId === a.id && { backgroundColor: primary + "20", borderColor: primary },
+                  accountId === a.id && { backgroundColor: "#1565C0" + "20", borderColor: "#1565C0" },
                 ]}
                 onPress={() => setAccountId(a.id)}
               >
                 <Ionicons
                   name={a.type === "cash" ? "cash" : a.type === "bank" ? "card" : "wallet"}
                   size={14}
-                  color={accountId === a.id ? primary : colors.textMuted}
+                  color={accountId === a.id ? "#1565C0" : colors.textMuted}
                 />
-                <Text style={[styles.chipText, { color: accountId === a.id ? primary : colors.text }]}>
+                <Text style={[styles.chipText, { color: accountId === a.id ? "#1565C0" : colors.text }]}>
                   {a.name}
                 </Text>
               </TouchableOpacity>
@@ -205,17 +200,11 @@ export default function TransactionModal() {
                 ]}
                 onPress={() => setCategoryId(cat.id)}
               >
-                <Ionicons
-                  name={cat.icon as any}
-                  size={15}
-                  color={categoryId === cat.id ? cat.color : colors.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.categoryText,
-                    { color: categoryId === cat.id ? cat.color : colors.textSecondary },
-                  ]}
-                >
+                <Ionicons name={cat.icon as any} size={15}
+                  color={categoryId === cat.id ? cat.color : colors.textMuted} />
+                <Text style={[styles.categoryText, {
+                  color: categoryId === cat.id ? cat.color : colors.textSecondary,
+                }]}>
                   {cat.name}
                 </Text>
               </TouchableOpacity>
@@ -223,130 +212,67 @@ export default function TransactionModal() {
           </View>
         </View>
 
-        <View style={{ height: 20 }} />
+        {/* Save button — INSIDE scroll, scrolls up when keyboard opens */}
+        <View style={styles.saveSection}>
+          <TouchableOpacity
+            style={[styles.saveBtn, { backgroundColor: activeColor }]}
+            onPress={handleSave}
+          >
+            <Ionicons name={isEditing ? "checkmark-circle" : "add-circle"} size={20} color="#fff" />
+            <Text style={styles.saveBtnText}>{isEditing ? "Update" : "Add"} Transaction</Text>
+          </TouchableOpacity>
+        </View>
       </KeyboardAwareScrollViewCompat>
-
-      {/* Save button */}
-      <View
-        style={[
-          styles.footer,
-          {
-            borderTopColor: colors.border,
-            paddingBottom: Math.max(insets.bottom, 16),
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: activeColor }]}
-          onPress={handleSave}
-        >
-          <Text style={styles.saveBtnText}>{isEditing ? "Update" : "Add"} Transaction</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 8,
-    marginBottom: 4,
-  },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: 4 },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 20, paddingVertical: 12,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   typeToggle: {
-    flexDirection: "row",
-    marginHorizontal: 20,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 8,
+    flexDirection: "row", marginHorizontal: 20, borderRadius: 12,
+    padding: 4, marginBottom: 4,
   },
   typeBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 9,
+    flex: 1, flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 9,
   },
   typeBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   amountBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    gap: 4,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 14, gap: 4,
   },
   currencySymbol: { fontSize: 22, fontFamily: "Inter_600SemiBold" },
-  amountInput: {
-    fontSize: 44,
-    fontFamily: "Inter_700Bold",
-    minWidth: 100,
-    textAlign: "center",
-  },
+  amountInput: { fontSize: 44, fontFamily: "Inter_700Bold", minWidth: 100, textAlign: "center" },
   section: { paddingHorizontal: 20, marginBottom: 16 },
   sectionLabel: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 },
   inputBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  chipScrollRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1,
   },
   chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
+  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   categoryChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1,
   },
   categoryText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  footer: {
-    padding: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
+  saveSection: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36 },
   saveBtn: {
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 16, borderRadius: 14,
   },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });

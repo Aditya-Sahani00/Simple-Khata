@@ -14,15 +14,11 @@ import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
 import { todayString } from "@/utils/nepali-date";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function PartyEntryModal() {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const { partyId, entryType: paramEntryType, id } = useLocalSearchParams<{
-    partyId?: string;
-    entryType?: string;
-    id?: string;
+    partyId?: string; entryType?: string; id?: string;
   }>();
   const { parties, accounts, partyEntries, addPartyEntry, editPartyEntry } = useApp();
 
@@ -31,14 +27,9 @@ export default function PartyEntryModal() {
   const [entryType, setEntryType] = useState<"to_give" | "to_receive">(
     existing?.entryType || (paramEntryType as "to_give" | "to_receive") || "to_receive"
   );
-  const [selectedPartyId, setSelectedPartyId] = useState(
-    existing?.partyId || partyId || ""
-  );
+  const [selectedPartyId, setSelectedPartyId] = useState(existing?.partyId || partyId || "");
   const [accountId, setAccountId] = useState(
-    existing?.accountId ||
-      accounts.find(a => a.isDefault)?.id ||
-      accounts[0]?.id ||
-      ""
+    existing?.accountId || accounts.find(a => a.isDefault)?.id || accounts[0]?.id || ""
   );
   const [amount, setAmount] = useState(existing ? String(existing.amount) : "");
   const [description, setDescription] = useState(existing?.description || "");
@@ -62,19 +53,11 @@ export default function PartyEntryModal() {
       return;
     }
     const data = {
-      partyId: selectedPartyId,
-      accountId,
-      entryType,
-      amount: Number(amount),
-      description: description.trim(),
-      date,
-      settled: false,
+      partyId: selectedPartyId, accountId, entryType,
+      amount: Number(amount), description: description.trim(), date, settled: false,
     };
-    if (isEditing) {
-      editPartyEntry(id!, data);
-    } else {
-      addPartyEntry(data);
-    }
+    if (isEditing) editPartyEntry(id!, data);
+    else addPartyEntry(data);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };
@@ -94,51 +77,30 @@ export default function PartyEntryModal() {
 
       <KeyboardAwareScrollViewCompat
         style={{ flex: 1 }}
-        bottomOffset={20}
+        bottomOffset={32}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Entry Type */}
+        {/* Entry Type toggle */}
         <View style={styles.section}>
           <View style={[styles.typeToggle, { backgroundColor: colors.inputBg }]}>
             <TouchableOpacity
-              style={[
-                styles.typeBtn,
-                entryType === "to_receive" && { backgroundColor: "#1565C0" },
-              ]}
+              style={[styles.typeBtn, entryType === "to_receive" && { backgroundColor: "#1565C0" }]}
               onPress={() => setEntryType("to_receive")}
             >
-              <Ionicons
-                name="arrow-back"
-                size={16}
-                color={entryType === "to_receive" ? "#fff" : colors.textMuted}
-              />
-              <Text
-                style={[
-                  styles.typeBtnText,
-                  { color: entryType === "to_receive" ? "#fff" : colors.textMuted },
-                ]}
-              >
+              <Ionicons name="arrow-back" size={16}
+                color={entryType === "to_receive" ? "#fff" : colors.textMuted} />
+              <Text style={[styles.typeBtnText, { color: entryType === "to_receive" ? "#fff" : colors.textMuted }]}>
                 To Receive
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.typeBtn,
-                entryType === "to_give" && { backgroundColor: "#FF6F00" },
-              ]}
+              style={[styles.typeBtn, entryType === "to_give" && { backgroundColor: "#FF6F00" }]}
               onPress={() => setEntryType("to_give")}
             >
-              <Ionicons
-                name="arrow-forward"
-                size={16}
-                color={entryType === "to_give" ? "#fff" : colors.textMuted}
-              />
-              <Text
-                style={[
-                  styles.typeBtnText,
-                  { color: entryType === "to_give" ? "#fff" : colors.textMuted },
-                ]}
-              >
+              <Ionicons name="arrow-forward" size={16}
+                color={entryType === "to_give" ? "#fff" : colors.textMuted} />
+              <Text style={[styles.typeBtnText, { color: entryType === "to_give" ? "#fff" : colors.textMuted }]}>
                 To Give
               </Text>
             </TouchableOpacity>
@@ -156,40 +118,33 @@ export default function PartyEntryModal() {
             placeholder="0"
             placeholderTextColor={color + "40"}
             returnKeyType="done"
+            autoFocus={!isEditing}
           />
         </View>
 
-        {/* Party selection (only if no pre-selected partyId) */}
+        {/* Party — only if not pre-selected */}
         {!partyId && (
           <View style={styles.section}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>Party</Text>
             {parties.length === 0 ? (
               <View style={[styles.emptyNote, { backgroundColor: colors.inputBg }]}>
                 <Text style={[styles.emptyNoteText, { color: colors.textMuted }]}>
-                  No parties yet. Go to Parties tab and add a party first.
+                  Go to Parties tab and add a party first.
                 </Text>
               </View>
             ) : (
-              <View style={styles.chipWrap}>
+              <View style={styles.chipRow}>
                 {parties.map(p => (
                   <TouchableOpacity
                     key={p.id}
                     style={[
                       styles.chip,
                       { borderColor: colors.border, backgroundColor: colors.inputBg },
-                      selectedPartyId === p.id && {
-                        backgroundColor: color + "20",
-                        borderColor: color,
-                      },
+                      selectedPartyId === p.id && { backgroundColor: color + "20", borderColor: color },
                     ]}
                     onPress={() => setSelectedPartyId(p.id)}
                   >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        { color: selectedPartyId === p.id ? color : colors.text },
-                      ]}
-                    >
+                    <Text style={[styles.chipText, { color: selectedPartyId === p.id ? color : colors.text }]}>
                       {p.name}
                     </Text>
                   </TouchableOpacity>
@@ -202,7 +157,7 @@ export default function PartyEntryModal() {
         {/* Account */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Account</Text>
-          <View style={styles.chipWrap}>
+          <View style={styles.chipRow}>
             {accounts.map(a => (
               <TouchableOpacity
                 key={a.id}
@@ -215,15 +170,9 @@ export default function PartyEntryModal() {
               >
                 <Ionicons
                   name={a.type === "cash" ? "cash" : a.type === "bank" ? "card" : "wallet"}
-                  size={14}
-                  color={accountId === a.id ? color : colors.textMuted}
+                  size={14} color={accountId === a.id ? color : colors.textMuted}
                 />
-                <Text
-                  style={[
-                    styles.chipText,
-                    { color: accountId === a.id ? color : colors.text },
-                  ]}
-                >
+                <Text style={[styles.chipText, { color: accountId === a.id ? color : colors.text }]}>
                   {a.name}
                 </Text>
               </TouchableOpacity>
@@ -234,9 +183,7 @@ export default function PartyEntryModal() {
         {/* Description */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Description (optional)</Text>
-          <View
-            style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
-          >
+          <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
             <TextInput
               style={[styles.input, { color: colors.text }]}
               value={description}
@@ -251,9 +198,7 @@ export default function PartyEntryModal() {
         {/* Date */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Date</Text>
-          <View
-            style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
-          >
+          <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
             <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
             <TextInput
               style={[styles.input, { color: colors.text }]}
@@ -266,110 +211,60 @@ export default function PartyEntryModal() {
           </View>
         </View>
 
-        <View style={{ height: 24 }} />
+        {/* Save button INSIDE scroll */}
+        <View style={styles.saveSection}>
+          <TouchableOpacity
+            style={[styles.saveBtn, { backgroundColor: color }]}
+            onPress={handleSave}
+          >
+            <Ionicons name={isEditing ? "checkmark-circle" : "add-circle"} size={20} color="#fff" />
+            <Text style={styles.saveBtnText}>{isEditing ? "Update" : "Add"} Entry</Text>
+          </TouchableOpacity>
+        </View>
       </KeyboardAwareScrollViewCompat>
-
-      <View
-        style={[
-          styles.footer,
-          {
-            borderTopColor: colors.border,
-            paddingBottom: Math.max(insets.bottom, 16),
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: color }]}
-          onPress={handleSave}
-        >
-          <Text style={styles.saveBtnText}>{isEditing ? "Update" : "Add"} Entry</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 8,
-    marginBottom: 4,
-  },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: 4 },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 20, paddingVertical: 12,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   section: { paddingHorizontal: 20, marginBottom: 16 },
   label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 },
-  typeToggle: {
-    flexDirection: "row",
-    borderRadius: 12,
-    padding: 4,
-  },
+  typeToggle: { flexDirection: "row", borderRadius: 12, padding: 4 },
   typeBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 9,
+    flex: 1, flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 9,
   },
   typeBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   amountBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    gap: 4,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 14, gap: 4,
   },
   currencySymbol: { fontSize: 22, fontFamily: "Inter_600SemiBold" },
-  amountInput: {
-    fontSize: 44,
-    fontFamily: "Inter_700Bold",
-    minWidth: 100,
-    textAlign: "center",
-  },
-  chipWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
+  amountInput: { fontSize: 44, fontFamily: "Inter_700Bold", minWidth: 100, textAlign: "center" },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1,
   },
   chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  emptyNote: {
-    borderRadius: 10,
-    padding: 14,
-    alignItems: "center",
-  },
+  emptyNote: { borderRadius: 10, padding: 14, alignItems: "center" },
   emptyNoteText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
   inputBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  footer: { padding: 20, paddingTop: 12, borderTopWidth: 1 },
-  saveBtn: { paddingVertical: 16, borderRadius: 14, alignItems: "center" },
+  saveSection: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36 },
+  saveBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 16, borderRadius: 14,
+  },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });

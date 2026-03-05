@@ -23,64 +23,79 @@ const ACCOUNT_CONFIG = {
   wallet: { icon: "wallet", gradient: ["#7B1FA2", "#4A148C"] as [string, string] },
 };
 
-function AccountCard({ account, onEdit, onDelete, currency }: {
-  account: Account;
-  onEdit: () => void;
-  onDelete: () => void;
-  currency: string;
+function AccountCard({
+  account, onTap, onEdit, onDelete, currency,
+}: {
+  account: Account; onTap: () => void; onEdit: () => void;
+  onDelete: () => void; currency: string;
 }) {
   const config = ACCOUNT_CONFIG[account.type];
 
   return (
-    <LinearGradient
-      colors={config.gradient}
-      style={styles.accountCard}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <TouchableOpacity
+      onPress={onTap}
+      activeOpacity={0.88}
+      style={styles.cardTouchable}
     >
-      <View style={styles.cardTop}>
-        <View style={styles.cardIconBox}>
-          <Ionicons name={config.icon as any} size={22} color="#fff" />
-        </View>
-        <View style={styles.cardBadge}>
-          <Text style={styles.cardTypeBadge}>
-            {account.type.toUpperCase()}
-          </Text>
-        </View>
-        <View style={styles.cardActions}>
-          <TouchableOpacity style={styles.cardBtn} onPress={onEdit}>
-            <Ionicons name="pencil" size={16} color="rgba(255,255,255,0.9)" />
-          </TouchableOpacity>
-          {!account.isDefault && (
-            <TouchableOpacity style={styles.cardBtn} onPress={onDelete}>
-              <Ionicons name="trash" size={16} color="rgba(255,255,255,0.9)" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-      <View style={styles.cardBottom}>
-        <Text style={styles.cardAccountName}>{account.name}</Text>
-        {account.holderName ? (
-          <Text style={styles.cardHolderName}>{account.holderName}</Text>
-        ) : null}
-        {account.bankName ? (
-          <Text style={styles.cardBankName}>{account.bankName}</Text>
-        ) : null}
-        {account.accountNumber ? (
-          <Text style={styles.cardAccountNum}>
-            ···· {account.accountNumber.slice(-4)}
-          </Text>
-        ) : null}
-        <Text style={styles.cardBalance}>
-          {currency} {formatAmount(account.balance)}
-        </Text>
-        {account.isDefault ? (
-          <View style={styles.defaultBadge}>
-            <Text style={styles.defaultText}>Default</Text>
+      <LinearGradient
+        colors={config.gradient}
+        style={styles.accountCard}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.cardTop}>
+          <View style={styles.cardIconBox}>
+            <Ionicons name={config.icon as any} size={22} color="#fff" />
           </View>
-        ) : null}
-      </View>
-    </LinearGradient>
+          <View style={styles.cardBadge}>
+            <Text style={styles.cardTypeBadge}>{account.type.toUpperCase()}</Text>
+          </View>
+          <View style={styles.cardActions}>
+            <TouchableOpacity
+              style={styles.cardBtn}
+              onPress={(e) => { e.stopPropagation(); onEdit(); }}
+            >
+              <Ionicons name="pencil" size={15} color="rgba(255,255,255,0.9)" />
+            </TouchableOpacity>
+            {!account.isDefault && (
+              <TouchableOpacity
+                style={styles.cardBtn}
+                onPress={(e) => { e.stopPropagation(); onDelete(); }}
+              >
+                <Ionicons name="trash" size={15} color="rgba(255,255,255,0.9)" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.cardBottom}>
+          <Text style={styles.cardAccountName}>{account.name}</Text>
+          {account.holderName ? (
+            <Text style={styles.cardHolderName}>{account.holderName}</Text>
+          ) : null}
+          {account.bankName ? (
+            <Text style={styles.cardBankName}>{account.bankName}</Text>
+          ) : null}
+          {account.accountNumber ? (
+            <Text style={styles.cardAccountNum}>···· {account.accountNumber.slice(-4)}</Text>
+          ) : null}
+          <Text style={styles.cardBalance}>
+            {currency} {formatAmount(account.balance)}
+          </Text>
+          {account.isDefault ? (
+            <View style={styles.defaultBadge}>
+              <Text style={styles.defaultText}>Default</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Tap hint */}
+        <View style={styles.tapHint}>
+          <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.5)" />
+          <Text style={styles.tapHintText}>Tap for history</Text>
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
   );
 }
 
@@ -98,11 +113,7 @@ export default function AccountsTab() {
       `Delete "${acc.name}"? Linked transactions will remain.`,
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => deleteAccount(acc.id),
-        },
+        { text: "Delete", style: "destructive", onPress: () => deleteAccount(acc.id) },
       ]
     );
   };
@@ -110,12 +121,7 @@ export default function AccountsTab() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View
-        style={[
-          styles.header,
-          { paddingTop: topPad + 8, backgroundColor: colors.surface },
-        ]}
-      >
+      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface }]}>
         <Text style={[styles.title, { color: colors.text }]}>Accounts</Text>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: primary }]}
@@ -135,9 +141,7 @@ export default function AccountsTab() {
         <Ionicons name="wallet" size={28} color="rgba(255,255,255,0.8)" />
         <View>
           <Text style={styles.totalLabel}>Total Balance</Text>
-          <Text style={styles.totalAmount}>
-            {currency} {formatAmount(totalBalance)}
-          </Text>
+          <Text style={styles.totalAmount}>{currency} {formatAmount(totalBalance)}</Text>
         </View>
         <View style={styles.totalRight}>
           <Text style={styles.accountCount}>
@@ -146,11 +150,11 @@ export default function AccountsTab() {
         </View>
       </LinearGradient>
 
-      {/* Account Type Quick Add */}
+      {/* Quick Add Row */}
       <View style={[styles.quickAddRow, { backgroundColor: colors.surface }]}>
-        {(["cash", "bank", "wallet"] as const).map((type) => {
+        {(["cash", "bank", "wallet"] as const).map(type => {
           const config = ACCOUNT_CONFIG[type];
-          const count = accounts.filter((a) => a.type === type).length;
+          const count = accounts.filter(a => a.type === type).length;
           return (
             <TouchableOpacity
               key={type}
@@ -159,18 +163,13 @@ export default function AccountsTab() {
                 router.push({ pathname: "/modal/account", params: { prefillType: type } })
               }
             >
-              <LinearGradient
-                colors={config.gradient}
-                style={styles.quickAddIcon}
-              >
+              <LinearGradient colors={config.gradient} style={styles.quickAddIcon}>
                 <Ionicons name={config.icon as any} size={18} color="#fff" />
               </LinearGradient>
               <Text style={[styles.quickAddLabel, { color: colors.text }]}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
               </Text>
-              <Text style={[styles.quickAddCount, { color: colors.textMuted }]}>
-                {count}
-              </Text>
+              <Text style={[styles.quickAddCount, { color: colors.textMuted }]}>{count}</Text>
             </TouchableOpacity>
           );
         })}
@@ -178,20 +177,15 @@ export default function AccountsTab() {
 
       <FlatList
         data={accounts}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.list,
-          { paddingBottom: Platform.OS === "ios" ? 100 : 80 },
-        ]}
+        keyExtractor={item => item.id}
+        contentContainerStyle={[styles.list, { paddingBottom: Platform.OS === "ios" ? 100 : 80 }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="wallet-outline" size={64} color={colors.textMuted} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              No Accounts
-            </Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No Accounts</Text>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              Add your cash, bank, or wallet accounts to track all your money
+              Add your cash, bank, or wallet accounts
             </Text>
             <TouchableOpacity
               style={[styles.emptyBtn, { backgroundColor: primary }]}
@@ -205,6 +199,9 @@ export default function AccountsTab() {
         renderItem={({ item }) => (
           <AccountCard
             account={item}
+            onTap={() =>
+              router.push({ pathname: "/account/[id]", params: { id: item.id } })
+            }
             onEdit={() =>
               router.push({ pathname: "/modal/account", params: { id: item.id } })
             }
@@ -221,183 +218,77 @@ export default function AccountsTab() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    flexDirection: "row", justifyContent: "space-between",
+    alignItems: "center", paddingHorizontal: 16, paddingBottom: 12,
   },
   title: { fontSize: 24, fontFamily: "Inter_700Bold" },
-  addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  addBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   totalBanner: {
-    margin: 16,
-    marginBottom: 0,
-    borderRadius: 16,
-    padding: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
+    margin: 16, marginBottom: 0, borderRadius: 16, padding: 18,
+    flexDirection: "row", alignItems: "center", gap: 14,
   },
-  totalLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.75)",
-  },
-  totalAmount: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
+  totalLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
+  totalAmount: { fontSize: 26, fontFamily: "Inter_700Bold", color: "#fff" },
   totalRight: { marginLeft: "auto" },
   accountCount: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.8)",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    fontSize: 13, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)",
+    backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 6,
   },
   quickAddRow: {
-    flexDirection: "row",
-    margin: 16,
-    marginBottom: 8,
-    borderRadius: 14,
-    padding: 12,
-    gap: 8,
+    flexDirection: "row", margin: 16, marginBottom: 8,
+    borderRadius: 14, padding: 12, gap: 8,
   },
   quickAddCard: {
-    flex: 1,
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 12,
-    padding: 12,
+    flex: 1, alignItems: "center", gap: 6, borderRadius: 12, padding: 12,
   },
-  quickAddIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  quickAddIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   quickAddLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   quickAddCount: { fontSize: 11, fontFamily: "Inter_400Regular" },
   list: { padding: 16, paddingTop: 8 },
+  cardTouchable: { borderRadius: 20, overflow: "hidden" },
   accountCard: {
-    borderRadius: 20,
-    padding: 20,
-    minHeight: 170,
+    borderRadius: 20, padding: 20, minHeight: 180,
     justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 12, elevation: 6,
   },
-  cardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
+  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   cardIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center", justifyContent: "center",
   },
-  cardBadge: {
-    flex: 1,
-    paddingLeft: 10,
-  },
-  cardTypeBadge: {
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    color: "rgba(255,255,255,0.5)",
-    letterSpacing: 1,
-  },
+  cardBadge: { flex: 1, paddingLeft: 10 },
+  cardTypeBadge: { fontSize: 10, fontFamily: "Inter_700Bold", color: "rgba(255,255,255,0.5)", letterSpacing: 1 },
   cardActions: { flexDirection: "row", gap: 8 },
   cardBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34, height: 34, borderRadius: 17,
     backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center", justifyContent: "center",
   },
   cardBottom: { gap: 3 },
-  cardAccountName: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
-  cardHolderName: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.8)",
-  },
-  cardBankName: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.7)",
-  },
-  cardAccountNum: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.6)",
-    letterSpacing: 2,
-  },
-  cardBalance: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-    marginTop: 8,
-  },
+  cardAccountName: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff" },
+  cardHolderName: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" },
+  cardBankName: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)" },
+  cardAccountNum: { fontSize: 13, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.6)", letterSpacing: 2 },
+  cardBalance: { fontSize: 26, fontFamily: "Inter_700Bold", color: "#fff", marginTop: 8 },
   defaultBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginTop: 4,
+    alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, marginTop: 4,
   },
-  defaultText: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.9)",
+  defaultText: { fontSize: 11, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.9)" },
+  tapHint: {
+    position: "absolute", bottom: 12, right: 16,
+    flexDirection: "row", alignItems: "center", gap: 4,
   },
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 14,
-    paddingHorizontal: 40,
-  },
+  tapHintText: { fontSize: 10, color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular" },
+  emptyState: { alignItems: "center", paddingTop: 60, gap: 14, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  emptyText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 22,
-  },
+  emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
   emptyBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 14,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    marginTop: 8,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8,
   },
-  emptyBtnText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    color: "#fff",
-  },
+  emptyBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });

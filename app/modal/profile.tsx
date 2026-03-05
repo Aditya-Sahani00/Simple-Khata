@@ -13,7 +13,6 @@ import * as Haptics from "expo-haptics";
 import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const PROFILE_TYPES = [
   { label: "Personal", value: "personal", icon: "person", color: "#1565C0" },
@@ -24,7 +23,6 @@ const PROFILE_TYPES = [
 
 export default function ProfileModal() {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { profiles, addProfile, editProfile } = useApp();
 
@@ -44,11 +42,8 @@ export default function ProfileModal() {
       return;
     }
     const data = { name: name.trim(), type, icon: selectedType.icon };
-    if (isEditing) {
-      editProfile(id!, data);
-    } else {
-      addProfile(data);
-    }
+    if (isEditing) editProfile(id!, data);
+    else addProfile(data);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };
@@ -68,10 +63,11 @@ export default function ProfileModal() {
 
       <KeyboardAwareScrollViewCompat
         style={{ flex: 1 }}
-        bottomOffset={20}
+        bottomOffset={32}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Profile Type */}
+        {/* Profile Type grid */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Profile Type</Text>
           <View style={styles.typeGrid}>
@@ -81,24 +77,13 @@ export default function ProfileModal() {
                 style={[
                   styles.typeCard,
                   { backgroundColor: colors.inputBg, borderColor: colors.border },
-                  type === t.value && {
-                    backgroundColor: t.color + "15",
-                    borderColor: t.color,
-                  },
+                  type === t.value && { backgroundColor: t.color + "15", borderColor: t.color },
                 ]}
                 onPress={() => setType(t.value)}
               >
-                <Ionicons
-                  name={t.icon as any}
-                  size={26}
-                  color={type === t.value ? t.color : colors.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.typeLabel,
-                    { color: type === t.value ? t.color : colors.textSecondary },
-                  ]}
-                >
+                <Ionicons name={t.icon as any} size={26}
+                  color={type === t.value ? t.color : colors.textMuted} />
+                <Text style={[styles.typeLabel, { color: type === t.value ? t.color : colors.textSecondary }]}>
                   {t.label}
                 </Text>
               </TouchableOpacity>
@@ -109,9 +94,7 @@ export default function ProfileModal() {
         {/* Name */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Profile Name *</Text>
-          <View
-            style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
-          >
+          <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
             <Ionicons name={selectedType.icon as any} size={18} color={selectedType.color} />
             <TextInput
               style={[styles.input, { color: colors.text }]}
@@ -125,70 +108,46 @@ export default function ProfileModal() {
           </View>
         </View>
 
-        <View style={{ height: 24 }} />
+        {/* Save button INSIDE scroll */}
+        <View style={styles.saveSection}>
+          <TouchableOpacity
+            style={[styles.saveBtn, { backgroundColor: selectedType.color }]}
+            onPress={handleSave}
+          >
+            <Ionicons name={isEditing ? "checkmark-circle" : "person-add"} size={20} color="#fff" />
+            <Text style={styles.saveBtnText}>{isEditing ? "Update" : "Create"} Profile</Text>
+          </TouchableOpacity>
+        </View>
       </KeyboardAwareScrollViewCompat>
-
-      <View
-        style={[
-          styles.footer,
-          {
-            borderTopColor: colors.border,
-            paddingBottom: Math.max(insets.bottom, 16),
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: selectedType.color }]}
-          onPress={handleSave}
-        >
-          <Text style={styles.saveBtnText}>{isEditing ? "Update" : "Create"} Profile</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 8,
-    marginBottom: 4,
-  },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: 4 },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 20, paddingVertical: 12,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   section: { paddingHorizontal: 20, marginBottom: 20 },
   label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 10 },
   typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   typeCard: {
-    width: "47%",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 14,
-    paddingVertical: 18,
-    borderWidth: 1,
+    width: "47%", alignItems: "center", gap: 8,
+    borderRadius: 14, paddingVertical: 18, borderWidth: 1,
   },
   typeLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
   inputBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  footer: { padding: 20, paddingTop: 12, borderTopWidth: 1 },
-  saveBtn: { paddingVertical: 16, borderRadius: 14, alignItems: "center" },
+  saveSection: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36 },
+  saveBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 16, borderRadius: 14,
+  },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });
