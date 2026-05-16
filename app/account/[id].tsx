@@ -27,10 +27,10 @@ const ACCOUNT_GRADIENTS: Record<string, [string, string]> = {
 };
 
 function TxItem({
-  item, accountName, useBS, currency, onEdit, onDelete,
+  item, accountName, useBS, currency, onPress, onLongPress, compact,
 }: {
   item: Transaction; accountName: string; useBS: boolean;
-  currency: string; onEdit: () => void; onDelete: () => void;
+  currency: string; onPress: () => void; onLongPress: () => void; compact?: boolean;
 }) {
   const { colors } = useTheme();
   const cat = getCategoryById(item.categoryId);
@@ -38,7 +38,8 @@ function TxItem({
   return (
     <TouchableOpacity
       style={[styles.txCard, { backgroundColor: colors.card }]}
-      onPress={onEdit}
+      onPress={onPress}
+      onLongPress={onLongPress}
       activeOpacity={0.8}
     >
       <View style={[styles.txCatIcon, { backgroundColor: cat.color + "20" }]}>
@@ -54,14 +55,9 @@ function TxItem({
       </View>
       <View style={styles.txRight}>
         <Text style={[styles.txAmount, { color: isIncome ? "#00C853" : "#F44336" }]}>
-          {isIncome ? "+" : "-"}{currency} {formatAmount(item.amount, true)}
+          {isIncome ? "+" : "-"}{currency} {formatAmount(item.amount, compact)}
         </Text>
-        <TouchableOpacity
-          style={styles.deleteBtn}
-          onPress={(e) => { e.stopPropagation(); onDelete(); }}
-        >
-          <Ionicons name="trash-outline" size={13} color="#F44336" />
-        </TouchableOpacity>
+        <Text style={[styles.txHint, { color: colors.textMuted }]}>Tap to edit • Hold to delete</Text>
       </View>
     </TouchableOpacity>
   );
@@ -75,6 +71,7 @@ export default function AccountHistoryScreen() {
 
   const currency = settings.currency || "NPR";
   const useBS = settings.dateFormat === "BS";
+  const compact = settings.amountFormat === "compact";
 
   const account = accounts.find(a => a.id === id);
   const gradient = ACCOUNT_GRADIENTS[account?.type || "cash"];
@@ -106,11 +103,11 @@ export default function AccountHistoryScreen() {
     [transactions, id]
   );
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 16 : insets.top;
 
   const handleDelete = (txId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert("Delete Transaction", "Are you sure?", [
+    Alert.alert("Delete Transaction", "Move to recycle bin?", [
       { text: "Cancel", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: () => deleteTransaction(txId) },
     ]);
@@ -165,7 +162,7 @@ export default function AccountHistoryScreen() {
             <Ionicons name="arrow-down-circle" size={16} color="rgba(255,255,255,0.8)" />
             <Text style={styles.inOutLabel}>Total In</Text>
             <Text style={styles.inOutAmount}>
-              {currency} {formatAmount(totalIn, true)}
+              {currency} {formatAmount(totalIn, compact)}
             </Text>
           </View>
           <View style={styles.inOutDivider} />
@@ -173,14 +170,14 @@ export default function AccountHistoryScreen() {
             <Ionicons name="arrow-up-circle" size={16} color="rgba(255,255,255,0.8)" />
             <Text style={styles.inOutLabel}>Total Out</Text>
             <Text style={styles.inOutAmount}>
-              {currency} {formatAmount(totalOut, true)}
+              {currency} {formatAmount(totalOut, compact)}
             </Text>
           </View>
         </View>
       </LinearGradient>
 
       {/* Controls */}
-      <View style={[styles.controls, { backgroundColor: colors.surface }]}>
+      <View style={[styles.controls, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         {/* Search */}
         <View style={[styles.searchBar, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
           <Ionicons name="search" size={15} color={colors.textMuted} />
@@ -239,10 +236,11 @@ export default function AccountHistoryScreen() {
             accountName={account.name}
             useBS={useBS}
             currency={currency}
-            onEdit={() =>
+            compact={compact}
+            onPress={() =>
               router.push({ pathname: "/modal/transaction", params: { id: item.id, type: item.type } })
             }
-            onDelete={() => handleDelete(item.id)}
+            onLongPress={() => handleDelete(item.id)}
           />
         )}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
@@ -302,7 +300,10 @@ const styles = StyleSheet.create({
   inOutDivider: { width: 1, backgroundColor: "rgba(255,255,255,0.2)" },
   inOutLabel: { fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: "Inter_400Regular" },
   inOutAmount: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
-  controls: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  controls: {
+    paddingHorizontal: 16, paddingVertical: 12, gap: 8,
+    borderBottomWidth: 1,
+  },
   searchBar: {
     flexDirection: "row", alignItems: "center", gap: 8,
     borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1,
@@ -325,11 +326,7 @@ const styles = StyleSheet.create({
   txMeta: { fontSize: 11, fontFamily: "Inter_400Regular" },
   txRight: { alignItems: "flex-end", gap: 6 },
   txAmount: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  deleteBtn: {
-    width: 26, height: 26, borderRadius: 8,
-    alignItems: "center", justifyContent: "center",
-    backgroundColor: "rgba(244,67,54,0.1)",
-  },
+  txHint: { fontSize: 11, fontFamily: "Inter_400Regular" },
   emptyState: {
     alignItems: "center", paddingTop: 80, gap: 12, paddingHorizontal: 40,
   },

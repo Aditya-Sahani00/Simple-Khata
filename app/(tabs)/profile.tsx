@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useApp, ThemeMode, DateFormat, Profile } from "@/context/AppContext";
+import { useApp, ThemeMode, DateFormat, AmountFormat, CurrencyOption, Profile } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -136,9 +137,11 @@ export default function ProfileScreen() {
     accounts,
     transactions,
     parties,
+    deletedTransactions,
+    deletedPartyEntries,
   } = useApp();
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 16 : insets.top;
   const currency = settings.currency || "NPR";
 
   const handleDeleteProfile = (id: string) => {
@@ -152,7 +155,7 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface }]}>
+      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <Text style={[styles.title, { color: colors.text }]}>Profile</Text>
       </View>
 
@@ -225,6 +228,90 @@ export default function ProfileScreen() {
             value={settings.dateFormat}
             onChange={v => updateSettings({ dateFormat: v as DateFormat })}
           />
+
+          <ToggleGroup
+            label="Currency"
+            options={[
+              { label: "NPR", value: "NPR" },
+              { label: "Rs.", value: "Rs." },
+              { label: "INR", value: "INR" },
+              { label: "$", value: "$" },
+            ]}
+            value={settings.currency as CurrencyOption}
+            onChange={v => updateSettings({ currency: v as CurrencyOption })}
+          />
+
+          <ToggleGroup
+            label="Amount Display"
+            options={[
+              { label: "Full (10,000)", value: "full" },
+              { label: "Compact (10K)", value: "compact" },
+            ]}
+            value={settings.amountFormat || "full"}
+            onChange={v => updateSettings({ amountFormat: v as AmountFormat })}
+          />
+
+          <SettingRow
+            icon="trash-bin-outline"
+            label="Recycle Bin"
+            value={`${deletedTransactions.length + deletedPartyEntries.length} items`}
+            onPress={() => router.push("recycle-bin" as any)}
+            iconColor="#F44336"
+          />
+        </View>
+
+        {/* Security */}
+        <View style={[styles.sectionCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Security</Text>
+          
+          <SettingRow
+            icon="lock-closed-outline"
+            label="App Lock"
+            value={settings.appLockEnabled ? "On" : "Off"}
+            onPress={() => {
+              if (!settings.appLockEnabled) {
+                // First time enabling - require PIN setup
+                router.push("/modal/pin?mode=set");
+              } else {
+                // Already enabled - offer to disable or change PIN
+                Alert.alert(
+                  "App Lock",
+                  "What would you like to do?",
+                  [
+                    {
+                      text: "Change PIN",
+                      onPress: () => router.push("/modal/pin?mode=change"),
+                    },
+                    {
+                      text: "Disable Lock",
+                      style: "destructive",
+                      onPress: () => {
+                        Alert.alert(
+                          "Disable App Lock",
+                          "Are you sure you want to disable app lock?",
+                          [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                              text: "Disable",
+                              style: "destructive",
+                              onPress: () => updateSettings({ appLockEnabled: false }),
+                            },
+                          ]
+                        );
+                      },
+                    },
+                    { text: "Cancel", style: "cancel" },
+                  ]
+                );
+              }
+            }}
+          />
+
+          <SettingRow
+            icon="key-outline"
+            label="Set/Change PIN"
+            onPress={() => router.push("/modal/pin?mode=change")}
+          />
         </View>
 
         {/* Data */}
@@ -233,13 +320,14 @@ export default function ProfileScreen() {
           <SettingRow
             icon="wallet-outline"
             label="Manage Accounts"
-            onPress={() => router.push("/accounts/index")}
+            onPress={() => router.push("/accounts")}
           />
         </View>
 
         {/* About */}
         <View style={[styles.sectionCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>About</Text>
+          
           <View style={styles.aboutContent}>
             <View style={[styles.appIconBox, { backgroundColor: primary }]}>
               <Ionicons name="book" size={28} color="#fff" />
@@ -252,6 +340,56 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </View>
+
+          <View style={[styles.madeBy, { borderTopColor: colors.divider }]}>
+            <Text style={[styles.madeByText, { color: colors.textMuted }]}>
+              Made by <Text style={{ color: primary }}>ABG Groups</Text>
+            </Text>
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.linkRow, { borderTopColor: colors.divider }]}
+            onPress={() => Linking.openURL("https://stutyhub.web.app/")}
+          >
+            <View style={styles.linkContent}>
+              <Ionicons name="school-outline" size={20} color={primary} />
+              <Text style={[styles.linkText, { color: colors.text }]}>StudyHub</Text>
+            </View>
+            <Ionicons name="open-outline" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.linkRow, { borderTopColor: colors.divider }]}
+            onPress={() => router.push("/modal/info?type=apps&title=Other+Apps")}
+          >
+            <View style={styles.linkContent}>
+              <Ionicons name="apps-outline" size={20} color={primary} />
+              <Text style={[styles.linkText, { color: colors.text }]}>Other Apps</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.linkRow, { borderTopColor: colors.divider }]}
+            onPress={() => router.push("/modal/info?type=company&title=About+Company")}
+          >
+            <View style={styles.linkContent}>
+              <Ionicons name="business-outline" size={20} color={primary} />
+              <Text style={[styles.linkText, { color: colors.text }]}>About Company</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.linkRow, { borderTopColor: colors.divider }]}
+            onPress={() => router.push("/modal/info?type=howto&title=How+to+Use")}
+          >
+            <View style={styles.linkContent}>
+              <Ionicons name="help-circle-outline" size={20} color={primary} />
+              <Text style={[styles.linkText, { color: colors.text }]}>How to Use</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -262,7 +400,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
   },
   title: {
     fontSize: 24,
@@ -440,5 +579,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
+  },
+  madeBy: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  madeByText: {
+    fontSize: 13,
+    textAlign: "center",
+  },
+  linkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+  linkContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  linkText: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
   },
 });

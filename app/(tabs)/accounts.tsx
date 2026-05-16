@@ -24,10 +24,10 @@ const ACCOUNT_CONFIG = {
 };
 
 function AccountCard({
-  account, onTap, onEdit, onDelete, currency,
+  account, onTap, onEdit, onDelete, currency, compact,
 }: {
   account: Account; onTap: () => void; onEdit: () => void;
-  onDelete: () => void; currency: string;
+  onDelete: () => void; currency: string; compact?: boolean;
 }) {
   const config = ACCOUNT_CONFIG[account.type];
 
@@ -80,7 +80,7 @@ function AccountCard({
             <Text style={styles.cardAccountNum}>···· {account.accountNumber.slice(-4)}</Text>
           ) : null}
           <Text style={styles.cardBalance}>
-            {currency} {formatAmount(account.balance)}
+            {currency} {formatAmount(account.balance, compact)}
           </Text>
           {account.isDefault ? (
             <View style={styles.defaultBadge}>
@@ -104,7 +104,8 @@ export default function AccountsTab() {
   const { colors, primary } = useTheme();
   const { accounts, deleteAccount, totalBalance, settings } = useApp();
   const currency = settings.currency || "NPR";
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const compact = settings.amountFormat === "compact";
+  const topPad = Platform.OS === "web" ? 16 : insets.top;
 
   const handleDelete = (acc: Account) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -121,7 +122,7 @@ export default function AccountsTab() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface }]}>
+      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <Text style={[styles.title, { color: colors.text }]}>Accounts</Text>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: primary }]}
@@ -141,7 +142,7 @@ export default function AccountsTab() {
         <Ionicons name="wallet" size={28} color="rgba(255,255,255,0.8)" />
         <View>
           <Text style={styles.totalLabel}>Total Balance</Text>
-          <Text style={styles.totalAmount}>{currency} {formatAmount(totalBalance)}</Text>
+          <Text style={styles.totalAmount}>{currency} {formatAmount(totalBalance, compact)}</Text>
         </View>
         <View style={styles.totalRight}>
           <Text style={styles.accountCount}>
@@ -207,6 +208,7 @@ export default function AccountsTab() {
             }
             onDelete={() => handleDelete(item)}
             currency={currency}
+            compact={compact}
           />
         )}
         ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
@@ -219,7 +221,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: "row", justifyContent: "space-between",
-    alignItems: "center", paddingHorizontal: 16, paddingBottom: 12,
+    alignItems: "center", paddingHorizontal: 16, paddingBottom: 14,
+    borderBottomWidth: 1,
   },
   title: { fontSize: 24, fontFamily: "Inter_700Bold" },
   addBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },

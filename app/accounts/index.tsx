@@ -79,7 +79,7 @@ export default function AccountsScreen() {
   const { colors, primary } = useTheme();
   const { accounts, deleteAccount, totalBalance, settings } = useApp();
   const currency = settings.currency || "NPR";
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 16 : insets.top;
 
   const handleDelete = (acc: Account) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

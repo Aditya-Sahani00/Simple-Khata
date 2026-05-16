@@ -17,6 +17,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { getCategoryById } from "@/utils/categories";
 import { formatDate } from "@/utils/nepali-date";
 import { formatAmount } from "@/components/CurrencyText";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type FilterType = "income" | "expense" | "to_receive" | "to_give";
 
@@ -47,6 +48,7 @@ const CONFIG: Record<FilterType, {
 };
 
 export default function FilterHistoryModal() {
+  const insets = useSafeAreaInsets();
   const { type } = useLocalSearchParams<{ type: string }>();
   const filterType = (type || "income") as FilterType;
   const config = CONFIG[filterType];
@@ -58,6 +60,7 @@ export default function FilterHistoryModal() {
 
   const currency = settings.currency || "NPR";
   const useBS = settings.dateFormat === "BS";
+  const compact = settings.amountFormat === "compact";
   const [search, setSearch] = useState("");
 
   const isPartyFilter = filterType === "to_receive" || filterType === "to_give";
@@ -115,8 +118,10 @@ export default function FilterHistoryModal() {
     }, 150);
   };
 
+  const topInset = Platform.OS === "ios" ? 0 : insets.top;
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface, paddingTop: topInset, paddingBottom: insets.bottom + 8 }]}>
       {/* Drag handle */}
       <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
@@ -136,7 +141,7 @@ export default function FilterHistoryModal() {
         <View style={styles.headerSummary}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalAmount}>
-            {currency} {formatAmount(total)}
+            {currency} {formatAmount(total, compact)}
           </Text>
           <Text style={styles.countLabel}>
             {count} {isPartyFilter ? "pending entries" : "transactions"}
@@ -195,7 +200,7 @@ export default function FilterHistoryModal() {
                   ) : null}
                 </View>
                 <Text style={[styles.entryAmount, { color: config.color }]}>
-                  {currency} {formatAmount(item.amount, true)}
+                  {currency} {formatAmount(item.amount, compact)}
                 </Text>
               </View>
             );
@@ -235,7 +240,7 @@ export default function FilterHistoryModal() {
                 </View>
                 <View style={styles.txRight}>
                   <Text style={[styles.txAmount, { color: config.color }]}>
-                    {filterType === "income" ? "+" : "-"}{currency} {formatAmount(item.amount, true)}
+                    {filterType === "income" ? "+" : "-"}{currency} {formatAmount(item.amount, compact)}
                   </Text>
                   <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
                 </View>
@@ -291,7 +296,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   closeBtn: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center", justifyContent: "center",
   },
@@ -299,7 +304,7 @@ const styles = StyleSheet.create({
     fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff",
   },
   addHeaderBtn: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.25)",
     alignItems: "center", justifyContent: "center",
   },

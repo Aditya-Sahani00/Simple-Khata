@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { loadData, saveData, STORAGE_KEYS } from "@/utils/storage";
 import { todayString } from "@/utils/nepali-date";
+import { Category, CATEGORIES as DEFAULT_CATEGORIES } from "@/utils/categories";
 
 export type AccountType = "cash" | "bank" | "wallet";
 
@@ -64,6 +65,15 @@ export interface PartyEntry {
   createdAt: string;
 }
 
+export interface Note {
+  id: string;
+  profileId: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Profile {
   id: string;
   name: string;
@@ -75,12 +85,21 @@ export interface Profile {
 export type ThemeMode = "light" | "dark" | "system";
 export type DateFormat = "BS" | "AD";
 export type Period = "weekly" | "monthly" | "yearly";
+export type AmountFormat = "compact" | "full";
+export type CurrencyOption = "NPR" | "Rs." | "INR" | "$";
 
 export interface AppSettings {
   theme: ThemeMode;
   dateFormat: DateFormat;
   period: Period;
   currency: string;
+  amountFormat: AmountFormat;
+  appLockEnabled: boolean;
+}
+
+export interface AppLock {
+  pin: string;
+  enabled: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -88,6 +107,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   dateFormat: "BS",
   period: "monthly",
   currency: "NPR",
+  amountFormat: "full",
+  appLockEnabled: false,
 };
 
 function generateId(): string {
@@ -110,12 +131,6 @@ interface AppContextValue {
   editAccount: (id: string, a: Partial<Account>) => void;
   deleteAccount: (id: string) => void;
 
-  // Transactions
-  transactions: Transaction[];
-  addTransaction: (t: Omit<Transaction, "id" | "createdAt" | "profileId">) => void;
-  editTransaction: (id: string, t: Partial<Transaction>) => void;
-  deleteTransaction: (id: string) => void;
-
   // Parties
   parties: Party[];
   addParty: (p: Omit<Party, "id" | "createdAt" | "profileId">) => void;
@@ -124,10 +139,26 @@ interface AppContextValue {
 
   // Party Entries
   partyEntries: PartyEntry[];
+  deletedPartyEntries: (PartyEntry & { deletedAt: string })[];
   addPartyEntry: (e: Omit<PartyEntry, "id" | "createdAt" | "profileId">) => void;
   editPartyEntry: (id: string, e: Partial<PartyEntry>) => void;
   deletePartyEntry: (id: string) => void;
+  restorePartyEntry: (id: string) => void;
+  permanentDeletePartyEntry: (id: string) => void;
   settlePartyEntry: (id: string) => void;
+
+  // Transactions
+  transactions: Transaction[];
+  deletedTransactions: (Transaction & { deletedAt: string })[];
+  addTransaction: (t: Omit<Transaction, "id" | "createdAt" | "profileId">) => void;
+  editTransaction: (id: string, t: Partial<Transaction>) => void;
+  deleteTransaction: (id: string) => void;
+  restoreTransaction: (id: string) => void;
+  permanentDeleteTransaction: (id: string) => void;
+
+  // Categories
+  categories: Category[];
+  addCategory: (c: Omit<Category, "id">) => void;
 
   // Settings
   settings: AppSettings;
@@ -167,30 +198,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeProfileId, setActiveProfileId] = useState("default");
   const [accounts, setAccounts] = useState<Account[]>([DEFAULT_CASH_ACCOUNT]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [deletedTransactions, setDeletedTransactions] = useState<(Transaction & { deletedAt: string })[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
   const [partyEntries, setPartyEntries] = useState<PartyEntry[]>([]);
+  const [deletedPartyEntries, setDeletedPartyEntries] = useState<(PartyEntry & { deletedAt: string })[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      const [p, api, acc, txs, pts, pe, s] = await Promise.all([
-        loadData(STORAGE_KEYS.PROFILES, [DEFAULT_PROFILE]),
-        loadData(STORAGE_KEYS.ACTIVE_PROFILE, "default"),
-        loadData(STORAGE_KEYS.ACCOUNTS, [DEFAULT_CASH_ACCOUNT]),
-        loadData(STORAGE_KEYS.TRANSACTIONS, []),
-        loadData(STORAGE_KEYS.PARTIES, []),
-        loadData("sk_party_entries", []),
-        loadData(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS),
-      ]);
-      setProfiles(p as Profile[]);
-      setActiveProfileId(api as string);
-      setAccounts(acc as Account[]);
-      setTransactions(txs as Transaction[]);
-      setParties(pts as Party[]);
-      setPartyEntries(pe as PartyEntry[]);
-      setSettings(s as AppSettings);
-      setIsLoaded(true);
+      try {
+        const [p, api, acc, txs, deletedTxs, pts, pe, deletedPE, cats, s] = await Promise.all([
+          loadData(STORAGE_KEYS.PROFILES, [DEFAULT_PROFILE]),
+          loadData(STORAGE_KEYS.ACTIVE_PROFILE, "default"),
+          loadData(STORAGE_KEYS.ACCOUNTS, [DEFAULT_CASH_ACCOUNT]),
+          loadData(STORAGE_KEYS.TRANSACTIONS, []),
+          loadData(STORAGE_KEYS.DELETED_TRANSACTIONS, []),
+          loadData(STORAGE_KEYS.PARTIES, []),
+          loadData(STORAGE_KEYS.PARTY_ENTRIES, []),
+          loadData(STORAGE_KEYS.DELETED_PARTY_ENTRIES, []),
+          loadData(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES),
+          loadData(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS),
+        ]);
+        setProfiles(p as Profile[]);
+        setActiveProfileId(api as string);
+        setAccounts(acc as Account[]);
+        setTransactions(txs as Transaction[]);
+        setDeletedTransactions(deletedTxs as (Transaction & { deletedAt: string })[]);
+        setParties(pts as Party[]);
+        setPartyEntries(pe as PartyEntry[]);
+        setDeletedPartyEntries(deletedPE as (PartyEntry & { deletedAt: string })[]);
+        setCategories(cats as Category[]);
+        setSettings(s as AppSettings);
+        setIsLoaded(true);
+      } catch (error) {
+        console.error("Failed to load app data:", error);
+        // Use defaults if loading fails
+        setProfiles([DEFAULT_PROFILE]);
+        setActiveProfileId("default");
+        setAccounts([DEFAULT_CASH_ACCOUNT]);
+        setIsLoaded(true);
+      }
     };
     load();
   }, []);
@@ -201,7 +250,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => { if (isLoaded) saveData(STORAGE_KEYS.ACCOUNTS, accounts); }, [accounts, isLoaded]);
   useEffect(() => { if (isLoaded) saveData(STORAGE_KEYS.TRANSACTIONS, transactions); }, [transactions, isLoaded]);
   useEffect(() => { if (isLoaded) saveData(STORAGE_KEYS.PARTIES, parties); }, [parties, isLoaded]);
-  useEffect(() => { if (isLoaded) saveData("sk_party_entries", partyEntries); }, [partyEntries, isLoaded]);
+  useEffect(() => { if (isLoaded) saveData(STORAGE_KEYS.PARTY_ENTRIES, partyEntries); }, [partyEntries, isLoaded]);
+  useEffect(() => { if (isLoaded) saveData(STORAGE_KEYS.DELETED_PARTY_ENTRIES, deletedPartyEntries); }, [deletedPartyEntries, isLoaded]);
+  useEffect(() => { if (isLoaded) saveData(STORAGE_KEYS.DELETED_TRANSACTIONS, deletedTransactions); }, [deletedTransactions, isLoaded]);
+  useEffect(() => { if (isLoaded) saveData(STORAGE_KEYS.CATEGORIES, categories); }, [categories, isLoaded]);
   useEffect(() => { if (isLoaded) saveData(STORAGE_KEYS.SETTINGS, settings); }, [settings, isLoaded]);
 
   const activeProfile = useMemo(
@@ -286,6 +338,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Transaction CRUD
+  const addCategory = useCallback((c: Omit<Category, "id">) => {
+    const newCat: Category = {
+      ...c,
+      id: `${c.type}_${c.name.toLowerCase().replace(/\s+/g, "_")}_${Date.now()}`,
+    };
+    setCategories(prev => [...prev, newCat]);
+  }, []);
+
   const addTransaction = useCallback((t: Omit<Transaction, "id" | "createdAt" | "profileId">) => {
     const newT: Transaction = {
       ...t,
@@ -340,9 +400,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
           return a;
         }));
+        setDeletedTransactions(prevDeleted => [{ ...t, deletedAt: new Date().toISOString() }, ...prevDeleted]);
       }
       return prev.filter(x => x.id !== id);
     });
+  }, []);
+
+  const restoreTransaction = useCallback((id: string) => {
+    setDeletedTransactions(prev => {
+      const found = prev.find(x => x.id === id);
+      if (!found) return prev;
+      setTransactions(txPrev => [found, ...txPrev]);
+      setAccounts(accs => accs.map(a => {
+        if (a.id === found.accountId) {
+          const delta = found.type === "income" ? found.amount : -found.amount;
+          return { ...a, balance: a.balance + delta };
+        }
+        return a;
+      }));
+      return prev.filter(x => x.id !== id);
+    });
+  }, []);
+
+  const permanentDeleteTransaction = useCallback((id: string) => {
+    setDeletedTransactions(prev => prev.filter(x => x.id !== id));
   }, []);
 
   // Party CRUD
@@ -381,11 +462,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deletePartyEntry = useCallback((id: string) => {
-    setPartyEntries(prev => prev.filter(x => x.id !== id));
+    setPartyEntries(prev => {
+      const found = prev.find(x => x.id === id);
+      if (found) {
+        setDeletedPartyEntries(prevDeleted => [{ ...found, deletedAt: new Date().toISOString() }, ...prevDeleted]);
+      }
+      return prev.filter(x => x.id !== id);
+    });
+  }, []);
+
+  const restorePartyEntry = useCallback((id: string) => {
+    setDeletedPartyEntries(prev => {
+      const found = prev.find(x => x.id === id);
+      if (!found) return prev;
+      setPartyEntries(entries => [found, ...entries]);
+      return prev.filter(x => x.id !== id);
+    });
+  }, []);
+
+  const permanentDeletePartyEntry = useCallback((id: string) => {
+    setDeletedPartyEntries(prev => prev.filter(x => x.id !== id));
   }, []);
 
   const settlePartyEntry = useCallback((id: string) => {
-    setPartyEntries(prev => prev.map(x => x.id === id ? { ...x, settled: true } : x));
+    setPartyEntries(prev => {
+      const entry = prev.find(e => e.id === id);
+      if (!entry || entry.settled) return prev;
+      // If not already settled, settle and create a corresponding transaction
+      if (entry.entryType === "to_receive") {
+        const partyLabel = entry.description || "Received from party";
+        const newTx = {
+          id: generateId(),
+          profileId: entry.profileId,
+          accountId: entry.accountId,
+          type: "income" as const,
+          amount: entry.amount,
+          categoryId: "business",
+          description: `Payment In · ${partyLabel}`,
+          partyId: entry.partyId,
+          date: entry.date,
+          createdAt: new Date().toISOString(),
+        };
+        setTransactions(t => [newTx, ...t]);
+        setAccounts(accs => accs.map(a =>
+          a.id === entry.accountId ? { ...a, balance: a.balance + entry.amount } : a
+        ));
+      } else {
+        const partyLabel = entry.description || "Paid to party";
+        const newTx = {
+          id: generateId(),
+          profileId: entry.profileId,
+          accountId: entry.accountId,
+          type: "expense" as const,
+          amount: entry.amount,
+          categoryId: "other",
+          description: `Payment Out · ${partyLabel}`,
+          partyId: entry.partyId,
+          date: entry.date,
+          createdAt: new Date().toISOString(),
+        };
+        setTransactions(t => [newTx, ...t]);
+        setAccounts(accs => accs.map(a =>
+          a.id === entry.accountId ? { ...a, balance: a.balance - entry.amount } : a
+        ));
+      }
+      return prev.map(x => x.id === id ? { ...x, settled: true } : x);
+    });
   }, []);
 
   const updateSettings = useCallback((s: Partial<AppSettings>) => {
@@ -455,20 +597,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     editAccount,
     deleteAccount,
     transactions: profileTransactions,
+    deletedTransactions,
     addTransaction,
     editTransaction,
     deleteTransaction,
+    restoreTransaction,
+    permanentDeleteTransaction,
     parties: profileParties,
     addParty,
     editParty,
     deleteParty,
     partyEntries: profilePartyEntries,
+    deletedPartyEntries,
     addPartyEntry,
     editPartyEntry,
     deletePartyEntry,
+    restorePartyEntry,
+    permanentDeletePartyEntry,
     settlePartyEntry,
     settings,
     updateSettings,
+    categories,
+    addCategory,
     totalBalance,
     totalIncome,
     totalExpense,
@@ -479,9 +629,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     profiles, activeProfileId, activeProfile,
     addProfile, editProfile, deleteProfile, setActiveProfile,
     profileAccounts, addAccount, editAccount, deleteAccount,
-    profileTransactions, addTransaction, editTransaction, deleteTransaction,
+    profileTransactions, deletedTransactions, addTransaction, editTransaction, deleteTransaction, restoreTransaction, permanentDeleteTransaction,
     profileParties, addParty, editParty, deleteParty,
-    profilePartyEntries, addPartyEntry, editPartyEntry, deletePartyEntry, settlePartyEntry,
+    profilePartyEntries, deletedPartyEntries, addPartyEntry, editPartyEntry, deletePartyEntry, restorePartyEntry, permanentDeletePartyEntry, settlePartyEntry,
     settings, updateSettings,
     totalBalance, totalIncome, totalExpense, totalToGive, totalToReceive,
     isLoaded,

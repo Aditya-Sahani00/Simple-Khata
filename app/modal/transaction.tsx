@@ -6,21 +6,25 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  Platform,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
-import { getCategoriesByType, getCategoryById } from "@/utils/categories";
-import { todayString } from "@/utils/nepali-date";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 
+import { todayString, formatDate } from "@/utils/nepali-date";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 export default function TransactionModal() {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { id, type: paramType } = useLocalSearchParams<{ id?: string; type?: string }>();
-  const { transactions, accounts, addTransaction, editTransaction, settings } = useApp();
+  const { transactions, accounts, categories, addTransaction, editTransaction, settings } = useApp();
   const currency = settings.currency || "NPR";
+  const useBS = settings.dateFormat === "BS";
 
   const existing = id ? transactions.find(t => t.id === id) : undefined;
 
@@ -35,7 +39,7 @@ export default function TransactionModal() {
   const [description, setDescription] = useState(existing?.description || "");
   const [date, setDate] = useState(existing?.date || todayString());
 
-  const categories = getCategoriesByType(txType);
+  const categoriesByType = categories.filter(c => c.type === txType || c.type === "both");
   const isEditing = !!existing;
 
   useEffect(() => {
@@ -69,8 +73,10 @@ export default function TransactionModal() {
   const expenseColor = "#F44336";
   const activeColor = txType === "income" ? incomeColor : expenseColor;
 
+  const topInset = Platform.OS === "ios" ? 0 : insets.top;
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface, paddingTop: topInset, paddingBottom: insets.bottom + 8 }]}>
       <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
       <View style={styles.header}>
@@ -109,7 +115,7 @@ export default function TransactionModal() {
       {/* ALL form content + Save button inside scroll so keyboard never hides anything */}
       <KeyboardAwareScrollViewCompat
         style={{ flex: 1 }}
-        bottomOffset={32}
+        bottomOffset={48}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -148,14 +154,19 @@ export default function TransactionModal() {
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Date</Text>
           <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
             <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textMuted}
-              returnKeyType="done"
-            />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.input, { color: colors.text, paddingVertical: 2 }]}>
+                {formatDate(date, useBS)}
+              </Text>
+              <TextInput
+                style={[styles.input, { color: colors.textMuted, fontSize: 11, paddingVertical: 0 }]}
+                value={date}
+                onChangeText={setDate}
+                placeholder="YYYY-MM-DD (AD)"
+                placeholderTextColor={colors.textMuted}
+                returnKeyType="done"
+              />
+            </View>
           </View>
         </View>
 
@@ -188,9 +199,14 @@ export default function TransactionModal() {
 
         {/* Category */}
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Category</Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Category</Text>
+            <TouchableOpacity onPress={() => router.push("/modal/category")}> 
+              <Text style={[styles.sectionLabel, { color: "#007AFF" }]}>+ Add Category</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.categoryGrid}>
-            {categories.map(cat => (
+            {categoriesByType.map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={[
@@ -232,16 +248,16 @@ const styles = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: 4 },
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 20, paddingVertical: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   typeToggle: {
-    flexDirection: "row", marginHorizontal: 20, borderRadius: 12,
+    flexDirection: "row", marginHorizontal: 16, borderRadius: 12,
     padding: 4, marginBottom: 4,
   },
   typeBtn: {
     flex: 1, flexDirection: "row", alignItems: "center",
-    justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 9,
+    justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 9,
   },
   typeBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   amountBox: {
@@ -250,11 +266,11 @@ const styles = StyleSheet.create({
   },
   currencySymbol: { fontSize: 22, fontFamily: "Inter_600SemiBold" },
   amountInput: { fontSize: 44, fontFamily: "Inter_700Bold", minWidth: 100, textAlign: "center" },
-  section: { paddingHorizontal: 20, marginBottom: 16 },
-  sectionLabel: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 },
+  section: { paddingHorizontal: 16, marginBottom: 12 },
+  sectionLabel: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 6 },
   inputBox: {
-    flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
@@ -269,10 +285,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1,
   },
   categoryText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  saveSection: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36 },
+  saveSection: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 28 },
   saveBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 16, borderRadius: 14,
+    gap: 8, paddingVertical: 18, borderRadius: 14,
   },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });

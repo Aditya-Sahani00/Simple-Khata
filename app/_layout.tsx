@@ -21,69 +21,85 @@ SplashScreen.preventAutoHideAsync();
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="profile-switch" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="party/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="account/[id]" options={{ headerShown: false }} />
       <Stack.Screen
         name="modal/transaction"
         options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.92],
-          sheetGrabberVisible: true,
+          presentation: "modal",
           headerShown: false,
         }}
       />
       <Stack.Screen
         name="modal/account"
         options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.85],
-          sheetGrabberVisible: true,
+          presentation: "modal",
           headerShown: false,
         }}
       />
       <Stack.Screen
         name="modal/party"
         options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.65],
-          sheetGrabberVisible: true,
+          presentation: "modal",
           headerShown: false,
         }}
       />
       <Stack.Screen
         name="modal/party-entry"
         options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.92],
-          sheetGrabberVisible: true,
+          presentation: "modal",
           headerShown: false,
         }}
       />
       <Stack.Screen
         name="modal/profile"
         options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.65],
-          sheetGrabberVisible: true,
+          presentation: "modal",
           headerShown: false,
         }}
       />
       <Stack.Screen
         name="modal/filter-history"
         options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.92],
-          sheetGrabberVisible: true,
+          presentation: "modal",
           headerShown: false,
         }}
       />
       <Stack.Screen
         name="modal/notifications"
         options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.85],
-          sheetGrabberVisible: true,
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="modal/pin"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="modal/info"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="modal/category"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="modal/note"
+        options={{
+          presentation: "modal",
           headerShown: false,
         }}
       />
@@ -105,8 +121,8 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
-
+  // Don't block app loading on fonts - allow app to load even if fonts fail
+  // Fonts will fall back to system fonts if not loaded
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

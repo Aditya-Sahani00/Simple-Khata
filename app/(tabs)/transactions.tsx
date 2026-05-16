@@ -21,25 +21,33 @@ import { formatAmount } from "@/components/CurrencyText";
 
 function TransactionItem({
   item,
-  onEdit,
-  onDelete,
+  onPress,
+  onLongPress,
   useBS,
   currency,
   accountName,
+  compact,
 }: {
   item: Transaction;
-  onEdit: () => void;
-  onDelete: () => void;
+  onPress: () => void;
+  onLongPress: () => void;
   useBS: boolean;
   currency: string;
   accountName: string;
+  compact?: boolean;
 }) {
   const { colors } = useTheme();
-  const category = getCategoryById(item.categoryId);
+  const { categories } = useApp();
+  const category = categories.find(c => c.id === item.categoryId) || getCategoryById(item.categoryId);
   const isIncome = item.type === "income";
 
   return (
-    <View style={[styles.txItem, { backgroundColor: colors.card }]}>
+    <TouchableOpacity
+      style={[styles.txItem, { backgroundColor: colors.card }]}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.8}
+    >
       <View style={[styles.txCatIcon, { backgroundColor: category.color + "20" }]}>
         <Ionicons name={category.icon as any} size={18} color={category.color} />
       </View>
@@ -61,30 +69,24 @@ function TransactionItem({
       </View>
       <View style={styles.txRight}>
         <Text style={[styles.txAmount, { color: isIncome ? "#00C853" : "#F44336" }]}>
-          {isIncome ? "+" : "-"}{currency} {formatAmount(item.amount, true)}
+          {isIncome ? "+" : "-"}{currency} {formatAmount(item.amount, compact)}
         </Text>
-        <View style={styles.txActions}>
-          <TouchableOpacity onPress={onEdit} style={styles.actionIcon}>
-            <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onDelete} style={styles.actionIcon}>
-            <Ionicons name="trash" size={14} color="#F44336" />
-          </TouchableOpacity>
-        </View>
+        <Text style={[styles.hintText, { color: colors.textMuted }]}>Tap to edit, long press to delete</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 export default function TransactionsScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark, primary } = useTheme();
-  const { transactions, accounts, deleteTransaction, settings } = useApp();
+  const { transactions, accounts, deleteTransaction, settings, categories } = useApp();
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [search, setSearch] = useState("");
 
   const useBS = settings.dateFormat === "BS";
   const currency = settings.currency || "NPR";
+  const compact = settings.amountFormat === "compact";
 
   const filtered = useMemo(() => {
     let list = [...transactions].sort(
@@ -119,53 +121,58 @@ export default function TransactionsScreen() {
     router.push({ pathname: "/modal/transaction", params: { id: item.id, type: item.type } });
   };
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 16 : insets.top;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface }]}>
-        <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.text }]}>Transactions</Text>
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: primary }]}
-            onPress={() => router.push({ pathname: "/modal/transaction", params: { type: "expense" } })}
-          >
-            <Ionicons name="add" size={22} color="#fff" />
+      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.title, { color: colors.text }]}>Transactions</Text>
+        <View style={[styles.actionRow, { backgroundColor: colors.inputBg, borderRadius: 14, padding: 4 }]}>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: "#1565C0" }]} onPress={() => router.push({ pathname: "/modal/party-entry", params: { entryType: "to_receive" } })}>
+            <Ionicons name="arrow-down-circle" size={14} color="#fff" />
+            <Text style={styles.actionBtnText}>Payment In</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: "#FF6F00" }]} onPress={() => router.push({ pathname: "/modal/party-entry", params: { entryType: "to_give" } })}>
+            <Ionicons name="arrow-up-circle" size={14} color="#fff" />
+            <Text style={styles.actionBtnText}>Payment Out</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: primary }]} onPress={() => router.push({ pathname: "/modal/transaction", params: { type: "expense" } })}>
+            <Ionicons name="add" size={14} color="#fff" />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Search */}
-        <View style={[styles.searchBar, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
-          <Ionicons name="search" size={16} color={colors.textMuted} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search transactions..."
-            placeholderTextColor={colors.textMuted}
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* Search */}
+      <View style={[styles.searchBar, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+        <Ionicons name="search" size={16} color={colors.textMuted} />
+        <TextInput
+          style={[styles.searchInput, { color: colors.text }]}
+          placeholder="Search transactions..."
+          placeholderTextColor={colors.textMuted}
+          value={search}
+          onChangeText={setSearch}
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch("")}>
+            <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
 
-        {/* Filter tabs */}
-        <View style={[styles.filterRow, { backgroundColor: colors.inputBg }]}>
-          {(["all", "income", "expense"] as const).map(f => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.filterBtn, filter === f && { backgroundColor: primary }]}
-              onPress={() => setFilter(f)}
-            >
-              <Text style={[styles.filterText, { color: filter === f ? "#fff" : colors.textSecondary }]}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      {/* Filter tabs */}
+      <View style={[styles.filterRow, { backgroundColor: colors.inputBg }]}>
+        {(["all", "income", "expense"] as const).map(f => (
+          <TouchableOpacity
+            key={f}
+            style={[styles.filterBtn, filter === f && { backgroundColor: primary }]}
+            onPress={() => setFilter(f)}
+          >
+            <Text style={[styles.filterText, { color: filter === f ? "#fff" : colors.textSecondary }]}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <FlatList
@@ -185,11 +192,12 @@ export default function TransactionsScreen() {
         renderItem={({ item }) => (
           <TransactionItem
             item={item}
-            onEdit={() => handleEdit(item)}
-            onDelete={() => handleDelete(item.id)}
+            onPress={() => handleEdit(item)}
+            onLongPress={() => handleDelete(item.id)}
             useBS={useBS}
             currency={currency}
             accountName={accounts.find(a => a.id === item.accountId)?.name || "Unknown"}
+            compact={compact}
           />
         )}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
@@ -202,26 +210,33 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "transparent",
-  },
-  headerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "space-between",
   },
   title: {
     fontSize: 24,
     fontFamily: "Inter_700Bold",
   },
-  addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  actionRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 4,
+  },
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  actionBtnText: {
+    color: "#fff",
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
   },
   searchBar: {
     flexDirection: "row",
@@ -233,11 +248,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   filterRow: {
     flexDirection: "row",
     borderRadius: 10,
@@ -304,17 +315,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_700Bold",
   },
-  txActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  actionIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.05)",
+  hintText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
   },
   emptyState: {
     alignItems: "center",

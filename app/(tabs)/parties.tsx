@@ -25,6 +25,7 @@ function PartyItem({
   onEdit,
   onDelete,
   currency,
+  compact,
 }: {
   party: Party;
   toGive: number;
@@ -33,9 +34,11 @@ function PartyItem({
   onEdit: () => void;
   onDelete: () => void;
   currency: string;
+  compact?: boolean;
 }) {
   const { colors } = useTheme();
   const net = toReceive - toGive;
+  // compact used via prop
   const hasBalance = toGive > 0 || toReceive > 0;
 
   return (
@@ -55,14 +58,14 @@ function PartyItem({
           {toReceive > 0 && (
             <View style={[styles.badge, { backgroundColor: "#00C853" + "15" }]}>
               <Text style={[styles.badgeText, { color: "#00C853" }]}>
-                Rcv {currency} {formatAmount(toReceive, true)}
+                Rcv {currency} {formatAmount(toReceive, compact)}
               </Text>
             </View>
           )}
           {toGive > 0 && (
             <View style={[styles.badge, { backgroundColor: "#FF6F00" + "15" }]}>
               <Text style={[styles.badgeText, { color: "#FF6F00" }]}>
-                Give {currency} {formatAmount(toGive, true)}
+                Give {currency} {formatAmount(toGive, compact)}
               </Text>
             </View>
           )}
@@ -80,7 +83,7 @@ function PartyItem({
                 { color: net >= 0 ? "#00C853" : "#FF6F00" },
               ]}
             >
-              {net >= 0 ? "+" : ""}{currency} {formatAmount(Math.abs(net), true)}
+              {net >= 0 ? "+" : ""}{currency} {formatAmount(Math.abs(net), compact)}
             </Text>
           </View>
         )}
@@ -102,7 +105,9 @@ export default function PartiesScreen() {
   const { colors, primary } = useTheme();
   const { parties, partyEntries, deleteParty, settings, totalToGive, totalToReceive } = useApp();
   const [search, setSearch] = useState("");
+
   const currency = settings.currency || "NPR";
+  const compact = settings.amountFormat === "compact";
 
   const filtered = useMemo(() => {
     let list = [...parties].sort((a, b) => a.name.localeCompare(b.name));
@@ -128,12 +133,12 @@ export default function PartiesScreen() {
     ]);
   };
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 16 : insets.top;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface }]}>
+      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.text }]}>Parties</Text>
           <TouchableOpacity
@@ -149,13 +154,13 @@ export default function PartiesScreen() {
           <View style={[styles.summaryChip, { backgroundColor: "#00C853" + "15" }]}>
             <Ionicons name="arrow-back" size={14} color="#00C853" />
             <Text style={[styles.summaryChipText, { color: "#00C853" }]}>
-              To Receive: {currency} {formatAmount(totalToReceive, true)}
+              To Receive: {currency} {formatAmount(totalToReceive, compact)}
             </Text>
           </View>
           <View style={[styles.summaryChip, { backgroundColor: "#FF6F00" + "15" }]}>
             <Ionicons name="arrow-forward" size={14} color="#FF6F00" />
             <Text style={[styles.summaryChipText, { color: "#FF6F00" }]}>
-              To Give: {currency} {formatAmount(totalToGive, true)}
+              To Give: {currency} {formatAmount(totalToGive, compact)}
             </Text>
           </View>
         </View>
@@ -198,6 +203,7 @@ export default function PartiesScreen() {
               onEdit={() => router.push({ pathname: "/modal/party", params: { id: item.id } })}
               onDelete={() => handleDelete(item.id)}
               currency={currency}
+              compact={compact}
             />
           );
         }}
@@ -211,7 +217,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
   },
   headerRow: {
     flexDirection: "row",

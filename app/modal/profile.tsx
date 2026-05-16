@@ -13,6 +13,7 @@ import * as Haptics from "expo-haptics";
 import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const PROFILE_TYPES = [
   { label: "Personal", value: "personal", icon: "person", color: "#1565C0" },
@@ -22,6 +23,7 @@ const PROFILE_TYPES = [
 ] as const;
 
 export default function ProfileModal() {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { profiles, addProfile, editProfile } = useApp();
@@ -49,7 +51,7 @@ export default function ProfileModal() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface, paddingBottom: insets.bottom + 8 }]}>
       <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
       <View style={styles.header}>
@@ -63,7 +65,7 @@ export default function ProfileModal() {
 
       <KeyboardAwareScrollViewCompat
         style={{ flex: 1 }}
-        bottomOffset={32}
+        bottomOffset={48}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -128,26 +130,26 @@ const styles = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: 4 },
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 20, paddingVertical: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  section: { paddingHorizontal: 20, marginBottom: 20 },
-  label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 10 },
-  typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  section: { paddingHorizontal: 16, marginBottom: 16 },
+  label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 },
+  typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   typeCard: {
     width: "47%", alignItems: "center", gap: 8,
-    borderRadius: 14, paddingVertical: 18, borderWidth: 1,
+    borderRadius: 14, paddingVertical: 16, borderWidth: 1,
   },
   typeLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
   inputBox: {
-    flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  saveSection: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36 },
+  saveSection: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 28 },
   saveBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 16, borderRadius: 14,
+    gap: 8, paddingVertical: 18, borderRadius: 14,
   },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });

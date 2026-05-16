@@ -93,10 +93,12 @@ export function formatDate(dateStr: string, useBS: boolean): string {
     if (isNaN(date.getTime())) return dateStr;
 
     if (!useBS) {
-      const d = date.getDate().toString().padStart(2, "0");
-      const m = AD_MONTHS[date.getMonth()];
-      const y = date.getFullYear();
-      return `${d} ${m} ${y}`;
+      // Use system locale for AD dates
+      return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit'
+      });
     }
 
     const bs = adToBs(date);
@@ -115,9 +117,11 @@ export function formatDateShort(dateStr: string, useBS: boolean): string {
     if (isNaN(date.getTime())) return dateStr;
 
     if (!useBS) {
-      const d = date.getDate().toString().padStart(2, "0");
-      const m = AD_MONTHS[date.getMonth()];
-      return `${d} ${m}`;
+      // Use system locale for AD dates
+      return date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: '2-digit'
+      });
     }
 
     const bs = adToBs(date);
@@ -147,6 +151,25 @@ export function getADYear(): number {
 
 export function todayString(): string {
   return new Date().toISOString().split("T")[0];
+}
+
+/**
+ * Returns a human-readable label for the current period based on date format.
+ * - weekly:  "This Week"
+ * - monthly: current month name in AD or BS
+ * - yearly:  current year number in AD or BS
+ */
+export function getPeriodLabel(period: "weekly" | "monthly" | "yearly", useBS: boolean): string {
+  if (period === "weekly") return "This Week";
+  if (period === "yearly") {
+    return useBS ? String(adToBs(new Date()).year) : String(new Date().getFullYear());
+  }
+  // monthly
+  if (useBS) {
+    const bs = adToBs(new Date());
+    return BS_MONTHS[bs.month];
+  }
+  return new Date().toLocaleString("default", { month: "long" });
 }
 
 export { BS_MONTHS, AD_MONTHS };

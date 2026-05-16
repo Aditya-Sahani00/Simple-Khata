@@ -17,20 +17,27 @@ import { useTheme } from "@/hooks/useTheme";
 import { formatAmount } from "@/components/CurrencyText";
 import { formatDate } from "@/utils/nepali-date";
 
-function EntryRow({ entry, onSettle, onDelete, useBS, currency, accountName }: {
+function EntryRow({ entry, onPress, onLongPress, onSettle, useBS, currency, accountName, compact }: {
   entry: PartyEntry;
+  onPress: () => void;
+  onLongPress: () => void;
   onSettle: () => void;
-  onDelete: () => void;
   useBS: boolean;
   currency: string;
   accountName: string;
+  compact?: boolean;
 }) {
   const { colors } = useTheme();
   const isGive = entry.entryType === "to_give";
   const color = isGive ? "#FF6F00" : "#1565C0";
 
   return (
-    <View style={[styles.entryRow, { backgroundColor: colors.card }]}>
+    <TouchableOpacity
+      style={[styles.entryRow, { backgroundColor: colors.card }]}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.8}
+    >
       <View style={[styles.entryIcon, { backgroundColor: color + "20" }]}>
         <Ionicons name={isGive ? "arrow-forward" : "arrow-back"} size={16} color={color} />
       </View>
@@ -44,7 +51,7 @@ function EntryRow({ entry, onSettle, onDelete, useBS, currency, accountName }: {
       </View>
       <View style={styles.entryRight}>
         <Text style={[styles.entryAmount, { color }]}>
-          {isGive ? "-" : "+"}{currency} {formatAmount(entry.amount, true)}
+          {isGive ? "-" : "+"}{currency} {formatAmount(entry.amount, compact)}
         </Text>
         <View style={styles.entryActions}>
           {!entry.settled && (
@@ -52,9 +59,7 @@ function EntryRow({ entry, onSettle, onDelete, useBS, currency, accountName }: {
               <Ionicons name="checkmark" size={14} color="#00C853" />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={[styles.settleBtn, { backgroundColor: "#F44336" + "10" }]} onPress={onDelete}>
-            <Ionicons name="trash" size={14} color="#F44336" />
-          </TouchableOpacity>
+          <Text style={[styles.hintSmall, { color: colors.textMuted }]}>Hold row for delete</Text>
         </View>
         {entry.settled && (
           <View style={[styles.settledBadge, { backgroundColor: "#00C853" + "15" }]}>
@@ -62,7 +67,7 @@ function EntryRow({ entry, onSettle, onDelete, useBS, currency, accountName }: {
           </View>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -75,6 +80,7 @@ export default function PartyDetailScreen() {
   const party = parties.find(p => p.id === id);
   const useBS = settings.dateFormat === "BS";
   const currency = settings.currency || "NPR";
+  const compact = settings.amountFormat === "compact";
 
   const entries = useMemo(
     () =>
@@ -92,7 +98,7 @@ export default function PartyDetailScreen() {
     };
   }, [entries]);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 16 : insets.top;
 
   if (!party) {
     return (
@@ -118,7 +124,7 @@ export default function PartyDetailScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface }]}>
+      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
@@ -143,13 +149,13 @@ export default function PartyDetailScreen() {
         <View style={[styles.balanceCard, { backgroundColor: "#1565C0" + "15", borderColor: "#1565C0" + "30" }]}>
           <Text style={[styles.balanceCardLabel, { color: "#1565C0" }]}>To Receive</Text>
           <Text style={[styles.balanceCardAmount, { color: "#1565C0" }]}>
-            {currency} {formatAmount(toReceive)}
+            {currency} {formatAmount(toReceive, compact)}
           </Text>
         </View>
         <View style={[styles.balanceCard, { backgroundColor: "#FF6F00" + "15", borderColor: "#FF6F00" + "30" }]}>
           <Text style={[styles.balanceCardLabel, { color: "#FF6F00" }]}>To Give</Text>
           <Text style={[styles.balanceCardAmount, { color: "#FF6F00" }]}>
-            {currency} {formatAmount(toGive)}
+            {currency} {formatAmount(toGive, compact)}
           </Text>
         </View>
       </View>
@@ -171,10 +177,12 @@ export default function PartyDetailScreen() {
         renderItem={({ item }) => (
           <EntryRow
             entry={item}
+            onPress={() => router.push({ pathname: "/modal/party-entry", params: { id: item.id } })}
+            onLongPress={() => handleDelete(item.id)}
             onSettle={() => handleSettle(item.id)}
-            onDelete={() => handleDelete(item.id)}
             useBS={useBS}
             currency={currency}
+            compact={compact}
             accountName={accounts.find(a => a.id === item.accountId)?.name || "Unknown"}
           />
         )}
@@ -191,7 +199,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
   },
   backBtn: {
     width: 40,
@@ -273,6 +282,7 @@ const styles = StyleSheet.create({
   entryMeta: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 3 },
   entryRight: { alignItems: "flex-end", gap: 6 },
   entryAmount: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  hintSmall: { fontSize: 10, fontFamily: "Inter_400Regular" },
   entryActions: { flexDirection: "row", gap: 6 },
   settleBtn: {
     width: 28,

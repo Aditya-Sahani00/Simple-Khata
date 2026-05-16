@@ -12,15 +12,18 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
-import { todayString } from "@/utils/nepali-date";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { todayString, formatDate } from "@/utils/nepali-date";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function PartyEntryModal() {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { partyId, entryType: paramEntryType, id } = useLocalSearchParams<{
     partyId?: string; entryType?: string; id?: string;
   }>();
-  const { parties, accounts, partyEntries, addPartyEntry, editPartyEntry } = useApp();
+  const { parties, accounts, partyEntries, addPartyEntry, editPartyEntry, settings } = useApp();
+  const useBS = settings.dateFormat === "BS";
 
   const existing = id ? partyEntries.find(e => e.id === id) : undefined;
 
@@ -63,7 +66,7 @@ export default function PartyEntryModal() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface, paddingBottom: insets.bottom + 8 }]}>
       <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
       <View style={styles.header}>
@@ -77,7 +80,7 @@ export default function PartyEntryModal() {
 
       <KeyboardAwareScrollViewCompat
         style={{ flex: 1 }}
-        bottomOffset={32}
+        bottomOffset={48}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -125,11 +128,16 @@ export default function PartyEntryModal() {
         {/* Party — only if not pre-selected */}
         {!partyId && (
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Party</Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Party</Text>
+              <TouchableOpacity onPress={() => router.push("/modal/party")}>  
+                <Text style={{ color: "#007AFF", fontSize: 13, fontFamily: "Inter_500Medium" }}>+ Add Party</Text>
+              </TouchableOpacity>
+            </View>
             {parties.length === 0 ? (
-              <View style={[styles.emptyNote, { backgroundColor: colors.inputBg }]}>
-                <Text style={[styles.emptyNoteText, { color: colors.textMuted }]}>
-                  Go to Parties tab and add a party first.
+              <View style={[styles.emptyNote, { backgroundColor: colors.inputBg }]}> 
+                <Text style={[styles.emptyNoteText, { color: colors.textMuted }]}> 
+                  No parties yet. Tap Add Party to create one.
                 </Text>
               </View>
             ) : (
@@ -200,14 +208,19 @@ export default function PartyEntryModal() {
           <Text style={[styles.label, { color: colors.textSecondary }]}>Date</Text>
           <View style={[styles.inputBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
             <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textMuted}
-              returnKeyType="done"
-            />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.input, { color: colors.text, paddingVertical: 2 }]}>
+                {formatDate(date, useBS)}
+              </Text>
+              <TextInput
+                style={[styles.input, { color: colors.textMuted, fontSize: 11, paddingVertical: 0 }]}
+                value={date}
+                onChangeText={setDate}
+                placeholder="YYYY-MM-DD (AD)"
+                placeholderTextColor={colors.textMuted}
+                returnKeyType="done"
+              />
+            </View>
           </View>
         </View>
 
@@ -231,15 +244,15 @@ const styles = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: 4 },
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 20, paddingVertical: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  section: { paddingHorizontal: 20, marginBottom: 16 },
-  label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 },
+  section: { paddingHorizontal: 16, marginBottom: 12 },
+  label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 6 },
   typeToggle: { flexDirection: "row", borderRadius: 12, padding: 4 },
   typeBtn: {
     flex: 1, flexDirection: "row", alignItems: "center",
-    justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 9,
+    justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 9,
   },
   typeBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   amountBox: {
@@ -251,20 +264,20 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1,
   },
   chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   emptyNote: { borderRadius: 10, padding: 14, alignItems: "center" },
   emptyNoteText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
   inputBox: {
-    flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  saveSection: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36 },
+  saveSection: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 28 },
   saveBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 16, borderRadius: 14,
+    gap: 8, paddingVertical: 18, borderRadius: 14,
   },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });

@@ -13,6 +13,7 @@ import * as Haptics from "expo-haptics";
 import { useApp, AccountType } from "@/context/AppContext";
 import { useTheme } from "@/hooks/useTheme";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ACCOUNT_TYPES: { label: string; value: AccountType; icon: string; color: string }[] = [
   { label: "Cash", value: "cash", icon: "cash", color: "#1565C0" },
@@ -21,6 +22,7 @@ const ACCOUNT_TYPES: { label: string; value: AccountType; icon: string; color: s
 ];
 
 export default function AccountModal() {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { id, prefillType } = useLocalSearchParams<{ id?: string; prefillType?: string }>();
   const { accounts, addAccount, editAccount } = useApp();
@@ -59,7 +61,7 @@ export default function AccountModal() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface, paddingBottom: insets.bottom + 8 }]}>
       <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
       <View style={styles.header}>
@@ -73,7 +75,7 @@ export default function AccountModal() {
 
       <KeyboardAwareScrollViewCompat
         style={{ flex: 1 }}
-        bottomOffset={32}
+        bottomOffset={48}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -211,27 +213,27 @@ const styles = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: 4 },
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 20, paddingVertical: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  section: { paddingHorizontal: 20, marginBottom: 16 },
-  label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 },
-  typeRow: { flexDirection: "row", gap: 10 },
+  section: { paddingHorizontal: 16, marginBottom: 12 },
+  label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 6 },
+  typeRow: { flexDirection: "row", gap: 8 },
   typeCard: {
     flex: 1, alignItems: "center", gap: 6, borderRadius: 12,
     paddingVertical: 14, borderWidth: 1,
   },
   typeText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   inputBox: {
-    flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   currencyLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  saveSection: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36 },
+  saveSection: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 28 },
   saveBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 16, borderRadius: 14,
+    gap: 8, paddingVertical: 18, borderRadius: 14,
   },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });
